@@ -1,0 +1,2 @@
+# Moduł kolektorów danych
+

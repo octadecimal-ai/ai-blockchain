@@ -1,0 +1,125 @@
+# Konfiguracja projektu AI Blockchain
+# =====================================
+
+project:
+  name: "ai-blockchain"
+  version: "0.1.0"
+  description: "Inteligentna analiza rynku kryptowalut z AI"
+
+# Konfiguracja giełd
+exchanges:
+  binance:
+    enabled: true
+    sandbox: true  # Używaj testnet na początku
+    rate_limit: 1200  # requests per minute
+  
+  coinbase:
+    enabled: false
+    sandbox: true
+
+# Kryptowaluty do śledzenia
+assets:
+  primary:
+    - BTC/USDT
+    - ETH/USDT
+  secondary:
+    - SOL/USDT
+    - BNB/USDT
+    - XRP/USDT
+    - ADA/USDT
+    - AVAX/USDT
+    - DOT/USDT
+    - LINK/USDT
+    - MATIC/USDT
+
+# Timeframe'y do analizy
+timeframes:
+  - 1m   # scalping
+  - 5m   # short-term
+  - 15m  # intraday
+  - 1h   # swing
+  - 4h   # swing
+  - 1d   # position
+  - 1w   # long-term
+
+# Wskaźniki techniczne
+indicators:
+  moving_averages:
+    - type: SMA
+      periods: [20, 50, 200]
+    - type: EMA
+      periods: [9, 21, 55]
+  oscillators:
+    - type: RSI
+      period: 14
+      overbought: 70
+      oversold: 30
+    - type: MACD
+      fast: 12
+      slow: 26
+      signal: 9
+  volatility:
+    - type: BBANDS
+      period: 20
+      std_dev: 2
+    - type: ATR
+      period: 14
+
+# Konfiguracja LLM
+llm:
+  provider: "anthropic"  # lub "openai"
+  model: "claude-3-sonnet-20240229"
+  temperature: 0.3
+  max_tokens: 4096
+  
+  # Prompty systemowe
+  prompts:
+    sentiment_analysis: "prompts/sentiment.txt"
+    market_report: "prompts/market_report.txt"
+    news_summary: "prompts/news_summary.txt"
+
+# Analiza sentymentu
+sentiment:
+  sources:
+    - twitter
+    - reddit
+    - news
+  update_interval: 300  # sekund
+  keywords:
+    - bitcoin
+    - btc
+    - ethereum
+    - eth
+    - crypto
+
+# Backtesting
+backtesting:
+  initial_capital: 10000  # USDT
+  commission: 0.001  # 0.1%
+  slippage: 0.0005  # 0.05%
+  start_date: "2023-01-01"
+  end_date: null  # null = do dzisiaj
+
+# Alerty
+alerts:
+  enabled: true
+  channels:
+    - telegram
+    - email
+  thresholds:
+    price_change: 5  # %
+    volume_spike: 3  # x średniej
+
+# Logowanie
+logging:
+  level: INFO
+  format: "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+  file: "logs/app.log"
+  rotation: "1 day"
+  retention: "30 days"
+
+# Baza danych
+database:
+  type: sqlite  # na początek, później postgresql
+  path: "data/ai_blockchain.db"
+
