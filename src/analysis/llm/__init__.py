@@ -1,2 +1,0 @@
-# Analiza z wykorzystaniem LLM
-

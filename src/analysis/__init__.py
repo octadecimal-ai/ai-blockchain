@@ -1,2 +1,0 @@
-# Moduły analizy danych
-
