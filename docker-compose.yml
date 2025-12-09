@@ -1,0 +1,88 @@
+# Docker Compose dla AI Blockchain
+# =================================
+# Uruchamia TimescaleDB (PostgreSQL z rozszerzeniem do szeregów czasowych)
+# oraz Redis dla cache'owania.
+#
+# Użycie:
+#   docker-compose up -d          # Uruchom w tle
+#   docker-compose logs -f        # Podgląd logów
+#   docker-compose down           # Zatrzymaj
+#   docker-compose down -v        # Zatrzymaj i usuń dane
+
+version: '3.8'
+
+services:
+  # === TimescaleDB (PostgreSQL + Time Series) ===
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: ai_blockchain_db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ai_blockchain
+      POSTGRES_USER: ai_blockchain
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-super_secret_password_change_me}
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+      - ./docker/init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_blockchain"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai_blockchain_net
+
+  # === Redis (Cache & Queue) ===
+  redis:
+    image: redis:7-alpine
+    container_name: ai_blockchain_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai_blockchain_net
+
+  # === Adminer (Panel administracyjny DB) ===
+  adminer:
+    image: adminer:latest
+    container_name: ai_blockchain_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - timescaledb
+    networks:
+      - ai_blockchain_net
+
+  # === RedisInsight (Panel dla Redis) ===
+  redis-insight:
+    image: redislabs/redisinsight:latest
+    container_name: ai_blockchain_redis_insight
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    depends_on:
+      - redis
+    networks:
+      - ai_blockchain_net
+
+volumes:
+  timescaledb_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  ai_blockchain_net:
+    driver: bridge
+

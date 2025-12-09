@@ -1,0 +1,101 @@
+# AI Blockchain - .gitignore
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# === Virtual Environments ===
+venv/
+venv
+**/venv/
+**/venv
+ENV/
+env/
+.venv/
+.venv
+**/.venv/
+**/.venv
+
+# === IDE ===
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# === Jupyter Notebooks ===
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# === Environment Variables ===
+.env
+.env.local
+.env.*.local
+*.env
+
+# === Data ===
+data/raw/*
+data/processed/*
+data/models/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/models/.gitkeep
+
+# === Logs ===
+logs/
+*.log
+
+# === Testing ===
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# === Build ===
+*.manifest
+*.spec
+
+# === Database ===
+*.db
+*.sqlite
+*.sqlite3
+
+# === Secrets ===
+secrets/
+*.pem
+*.key
+credentials.json
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Misc ===
+*.bak
+*.tmp
+*.temp
+
+.dev
