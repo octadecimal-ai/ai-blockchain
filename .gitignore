@@ -24,9 +24,15 @@ wheels/
 
 # === Virtual Environments ===
 venv/
+venv
+**/venv/
+**/venv
 ENV/
 env/
 .venv/
+.venv
+**/.venv/
+**/.venv
 
 # === IDE ===
 .idea/
