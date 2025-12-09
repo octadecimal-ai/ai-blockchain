@@ -88,7 +88,8 @@ class DatabaseManager:
         self.SessionLocal = sessionmaker(
             autocommit=False,
             autoflush=False,
-            bind=self.engine
+            bind=self.engine,
+            expire_on_commit=False  # Pozwala na dostęp do atrybutów po zamknięciu sesji
         )
         
         logger.info(f"DatabaseManager zainicjalizowany: {self._safe_url()}")

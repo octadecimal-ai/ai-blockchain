@@ -55,7 +55,8 @@ class OHLCV(Base):
     """
     __tablename__ = 'ohlcv'
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    # Używamy Integer dla SQLite compatibility (autoincrement działa lepiej)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     timestamp = Column(DateTime, nullable=False, index=True)
     exchange = Column(String(50), nullable=False, index=True)
     symbol = Column(String(50), nullable=False, index=True)  # np. BTC/USDT, BTC-USD
@@ -89,7 +90,7 @@ class Ticker(Base):
     """
     __tablename__ = 'tickers'
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     timestamp = Column(DateTime, nullable=False, index=True)
     exchange = Column(String(50), nullable=False, index=True)
     symbol = Column(String(50), nullable=False, index=True)
@@ -120,7 +121,7 @@ class FundingRate(Base):
     """
     __tablename__ = 'funding_rates'
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     timestamp = Column(DateTime, nullable=False, index=True)
     exchange = Column(String(50), nullable=False, index=True)
     symbol = Column(String(50), nullable=False, index=True)
@@ -140,7 +141,7 @@ class Trade(Base):
     """
     __tablename__ = 'trades'
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     timestamp = Column(DateTime, nullable=False, index=True)
     exchange = Column(String(50), nullable=False, index=True)
     symbol = Column(String(50), nullable=False, index=True)
@@ -164,7 +165,7 @@ class TechnicalIndicator(Base):
     """
     __tablename__ = 'technical_indicators'
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     timestamp = Column(DateTime, nullable=False, index=True)
     exchange = Column(String(50), nullable=False, index=True)
     symbol = Column(String(50), nullable=False, index=True)
@@ -204,7 +205,7 @@ class SentimentScore(Base):
     """
     __tablename__ = 'sentiment_scores'
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     timestamp = Column(DateTime, nullable=False, index=True)
     symbol = Column(String(50), nullable=False, index=True)
     source = Column(String(50), nullable=False)  # twitter, reddit, news, llm
@@ -229,7 +230,7 @@ class Signal(Base):
     """
     __tablename__ = 'signals'
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     timestamp = Column(DateTime, nullable=False, index=True)
     exchange = Column(String(50), nullable=False)
     symbol = Column(String(50), nullable=False, index=True)
@@ -267,7 +268,7 @@ class Position(Base):
     """
     __tablename__ = 'positions'
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     portfolio_id = Column(Integer, ForeignKey('portfolio.id'), nullable=False)
     
     exchange = Column(String(50), nullable=False)
