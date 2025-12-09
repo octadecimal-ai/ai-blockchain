@@ -6,8 +6,9 @@ Generuje raporty, analizuje newsy i tworzy podsumowania trendów.
 """
 
 import os
+import json
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 import pandas as pd
 from loguru import logger
 

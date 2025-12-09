@@ -5,6 +5,7 @@ Moduł do pobierania danych historycznych i real-time z giełdy Binance.
 Wykorzystuje bibliotekę ccxt dla ujednoliconego dostępu do API.
 """
 
+import os
 import ccxt
 import pandas as pd
 from datetime import datetime, timedelta
@@ -36,19 +37,44 @@ class BinanceCollector:
         '1w': 7 * 24 * 60 * 60 * 1000,
     }
     
-    def __init__(self, sandbox: bool = False):
+    def __init__(
+        self, 
+        sandbox: bool = False,
+        api_key: Optional[str] = None,
+        secret: Optional[str] = None
+    ):
         """
         Inicjalizacja kolektora.
         
         Args:
             sandbox: Czy używać testnet (zalecane na początek)
+            api_key: Klucz API Binance (opcjonalnie, lub z BINANCE_API_KEY)
+            secret: Secret API Binance (opcjonalnie, lub z BINANCE_SECRET)
+            
+        Note:
+            API keys nie są wymagane do pobierania danych publicznych (OHLCV, ticker).
+            Są potrzebne do operacji prywatnych (trading, balanse).
         """
-        self.exchange = ccxt.binance({
+        # Pobierz klucze z parametrów lub zmiennych środowiskowych
+        api_key = api_key or os.getenv('BINANCE_API_KEY')
+        secret = secret or os.getenv('BINANCE_SECRET')
+        
+        config = {
             'enableRateLimit': True,
             'options': {
                 'defaultType': 'spot',
             }
-        })
+        }
+        
+        # Dodaj API keys jeśli dostępne
+        if api_key and secret:
+            config['apiKey'] = api_key
+            config['secret'] = secret
+            logger.info("Binance Collector: API keys skonfigurowane")
+        else:
+            logger.info("Binance Collector: tryb publiczny (bez API keys)")
+        
+        self.exchange = ccxt.binance(config)
         
         if sandbox:
             self.exchange.set_sandbox_mode(True)

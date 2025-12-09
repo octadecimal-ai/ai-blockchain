@@ -68,16 +68,43 @@ class DydxCollector:
         logger.info(f"dYdX Collector uruchomiony w trybie {mode}")
         logger.info(f"Base URL: {self.base_url}")
     
-    def _make_request(self, endpoint: str, params: dict = None) -> dict:
-        """Wykonuje request do API dYdX."""
+    def _make_request(
+        self, 
+        endpoint: str, 
+        params: dict = None, 
+        max_retries: int = 3,
+        retry_delay: float = 1.0
+    ) -> dict:
+        """
+        Wykonuje request do API dYdX z retry logic.
+        
+        Args:
+            endpoint: Endpoint API
+            params: Parametry zapytania
+            max_retries: Maksymalna liczba prób
+            retry_delay: Opóźnienie między próbami (w sekundach)
+            
+        Returns:
+            Odpowiedź JSON
+        """
         url = f"{self.base_url}{endpoint}"
-        try:
-            response = self.session.get(url, params=params, timeout=30)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Błąd API dYdX: {e}")
-            raise
+        last_exception = None
+        
+        for attempt in range(max_retries):
+            try:
+                response = self.session.get(url, params=params, timeout=30)
+                response.raise_for_status()
+                return response.json()
+            except requests.exceptions.RequestException as e:
+                last_exception = e
+                if attempt < max_retries - 1:
+                    wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
+                    logger.warning(f"Błąd API dYdX (próba {attempt + 1}/{max_retries}): {e}. Ponawiam za {wait_time:.1f}s...")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Błąd API dYdX po {max_retries} próbach: {e}")
+        
+        raise last_exception
     
     def get_markets(self) -> pd.DataFrame:
         """

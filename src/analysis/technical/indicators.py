@@ -49,15 +49,19 @@ class TechnicalAnalyzer:
     
     # === Średnie Kroczące ===
     
-    def add_sma(self, periods: list[int] = [20, 50, 200]) -> 'TechnicalAnalyzer':
+    def add_sma(self, periods: list[int] = None) -> 'TechnicalAnalyzer':
         """Dodaje Simple Moving Average."""
+        if periods is None:
+            periods = [20, 50, 200]
         for period in periods:
             self.df[f'sma_{period}'] = self.df['close'].rolling(window=period).mean()
         logger.debug(f"Dodano SMA dla okresów: {periods}")
         return self
     
-    def add_ema(self, periods: list[int] = [9, 21, 55]) -> 'TechnicalAnalyzer':
+    def add_ema(self, periods: list[int] = None) -> 'TechnicalAnalyzer':
         """Dodaje Exponential Moving Average."""
+        if periods is None:
+            periods = [9, 21, 55]
         for period in periods:
             self.df[f'ema_{period}'] = self.df['close'].ewm(span=period, adjust=False).mean()
         logger.debug(f"Dodano EMA dla okresów: {periods}")
@@ -294,10 +298,11 @@ class TechnicalAnalyzer:
 # === Przykład użycia ===
 if __name__ == "__main__":
     import sys
+    from pathlib import Path
+    
     sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
     
     from src.collectors.exchange.binance_collector import BinanceCollector
-    from pathlib import Path
     
     # Pobierz dane
     collector = BinanceCollector()

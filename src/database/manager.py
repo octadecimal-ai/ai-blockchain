@@ -11,7 +11,7 @@ Obsługuje:
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from contextlib import contextmanager
 
@@ -138,7 +138,7 @@ class DatabaseManager:
         timeframe: str
     ) -> int:
         """
-        Zapisuje DataFrame OHLCV do bazy.
+        Zapisuje DataFrame OHLCV do bazy (bulk insert z obsługą duplikatów).
         
         Args:
             df: DataFrame z kolumnami open, high, low, close, volume
@@ -167,22 +167,41 @@ class DatabaseManager:
                 'trades_count': row.get('trades', None),
             })
         
-        # Bulk upsert (insert or ignore duplicates)
-        with self.get_session() as session:
-            for record in records:
-                # Sprawdź czy istnieje
-                existing = session.query(OHLCV).filter(
-                    OHLCV.timestamp == record['timestamp'],
-                    OHLCV.exchange == record['exchange'],
-                    OHLCV.symbol == record['symbol'],
-                    OHLCV.timeframe == record['timeframe']
-                ).first()
-                
-                if not existing:
-                    session.add(OHLCV(**record))
+        inserted_count = 0
         
-        logger.info(f"Zapisano {len(records)} świec {exchange}:{symbol} {timeframe}")
-        return len(records)
+        # Bulk insert z obsługą duplikatów
+        if 'postgresql' in self.database_url:
+            # PostgreSQL: użyj ON CONFLICT DO NOTHING
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
+            
+            with self.get_session() as session:
+                stmt = pg_insert(OHLCV).values(records)
+                stmt = stmt.on_conflict_do_nothing(
+                    index_elements=['timestamp', 'exchange', 'symbol', 'timeframe']
+                )
+                result = session.execute(stmt)
+                inserted_count = result.rowcount if result.rowcount else len(records)
+        else:
+            # SQLite/inne: batch insert z ignorowaniem błędów
+            with self.get_session() as session:
+                for record in records:
+                    try:
+                        # Sprawdź czy istnieje (optymalizacja: można użyć INSERT OR IGNORE)
+                        existing = session.query(OHLCV).filter(
+                            OHLCV.timestamp == record['timestamp'],
+                            OHLCV.exchange == record['exchange'],
+                            OHLCV.symbol == record['symbol'],
+                            OHLCV.timeframe == record['timeframe']
+                        ).first()
+                        
+                        if not existing:
+                            session.add(OHLCV(**record))
+                            inserted_count += 1
+                    except Exception:
+                        continue
+        
+        logger.info(f"Zapisano {inserted_count}/{len(records)} świec {exchange}:{symbol} {timeframe}")
+        return inserted_count
     
     def get_ohlcv(
         self,
@@ -288,7 +307,7 @@ class DatabaseManager:
         """Zapisuje sygnał handlowy."""
         with self.get_session() as session:
             signal = Signal(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 exchange=exchange,
                 symbol=symbol,
                 signal_type=signal_type,
@@ -309,7 +328,7 @@ class DatabaseManager:
         """Pobiera ostatnie sygnały."""
         with self.get_session() as session:
             query = session.query(Signal).filter(
-                Signal.timestamp >= datetime.utcnow() - timedelta(hours=hours)
+                Signal.timestamp >= datetime.now(timezone.utc) - timedelta(hours=hours)
             )
             
             if symbol:

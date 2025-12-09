@@ -16,7 +16,7 @@ WAŻNE: Arbitraż wymaga:
 - Uwzględnienia slippage i spreadów
 """
 
-import asyncio
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
@@ -152,9 +152,27 @@ class ArbitrageScanner:
             self._dydx = DydxCollector(testnet=False)
         return self._dydx
     
-    def get_prices(self, asset: str) -> Dict[str, float]:
+    def _fetch_binance_price(self, asset: str, symbol: str) -> Tuple[str, Optional[float]]:
+        """Pobiera cenę z Binance (helper do równoległego wykonania)."""
+        try:
+            ticker = self.binance.get_ticker(symbol)
+            return ('binance', ticker['last'])
+        except Exception as e:
+            logger.error(f"Błąd Binance dla {asset}: {e}")
+            return ('binance', None)
+    
+    def _fetch_dydx_price(self, asset: str, symbol: str) -> Tuple[str, Optional[float]]:
+        """Pobiera cenę z dYdX (helper do równoległego wykonania)."""
+        try:
+            ticker = self.dydx.get_ticker(symbol)
+            return ('dydx', ticker['oracle_price'])
+        except Exception as e:
+            logger.error(f"Błąd dYdX dla {asset}: {e}")
+            return ('dydx', None)
+    
+    def get_prices(self, asset: str) -> Dict[str, Optional[float]]:
         """
-        Pobiera aktualne ceny z obu giełd.
+        Pobiera aktualne ceny z obu giełd równolegle.
         
         Args:
             asset: Symbol aktywa (np. "BTC")
@@ -168,21 +186,16 @@ class ArbitrageScanner:
         
         prices = {}
         
-        # Binance
-        try:
-            ticker = self.binance.get_ticker(symbols['binance'])
-            prices['binance'] = ticker['last']
-        except Exception as e:
-            logger.error(f"Błąd Binance dla {asset}: {e}")
-            prices['binance'] = None
-        
-        # dYdX
-        try:
-            ticker = self.dydx.get_ticker(symbols['dydx'])
-            prices['dydx'] = ticker['oracle_price']
-        except Exception as e:
-            logger.error(f"Błąd dYdX dla {asset}: {e}")
-            prices['dydx'] = None
+        # Równoległe pobieranie cen z obu giełd
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [
+                executor.submit(self._fetch_binance_price, asset, symbols['binance']),
+                executor.submit(self._fetch_dydx_price, asset, symbols['dydx'])
+            ]
+            
+            for future in as_completed(futures):
+                exchange, price = future.result()
+                prices[exchange] = price
         
         return prices
     
@@ -242,31 +255,57 @@ class ArbitrageScanner:
             fees_sell=fees_sell,
         )
     
-    def scan_all(self, min_profit: float = 0.1) -> List[ArbitrageOpportunity]:
+    def scan_all(self, min_profit: float = 0.1, parallel: bool = True) -> List[ArbitrageOpportunity]:
         """
-        Skanuje wszystkie dostępne assety.
+        Skanuje wszystkie dostępne assety (opcjonalnie równolegle).
         
         Args:
             min_profit: Minimalny zysk % aby uznać za okazję
+            parallel: Czy skanować równolegle (szybciej, ale więcej requestów)
             
         Returns:
             Lista okazji arbitrażowych
         """
         opportunities = []
+        assets = list(self.SYMBOL_MAPPING.keys())
         
-        for asset in self.SYMBOL_MAPPING.keys():
-            try:
-                opp = self.scan_single(asset)
-                if opp:
-                    opportunities.append(opp)
-                    
-                    if opp.is_profitable(min_profit):
-                        logger.success(f"🎯 Okazja: {asset} | Spread: {opp.spread_percent:.3f}%")
-                    else:
-                        logger.debug(f"❌ {asset}: {opp.spread_percent:.3f}% (za mały spread)")
+        if parallel:
+            # Równoległe skanowanie (szybsze)
+            with ThreadPoolExecutor(max_workers=len(assets)) as executor:
+                future_to_asset = {
+                    executor.submit(self.scan_single, asset): asset 
+                    for asset in assets
+                }
+                
+                for future in as_completed(future_to_asset):
+                    asset = future_to_asset[future]
+                    try:
+                        opp = future.result()
+                        if opp:
+                            opportunities.append(opp)
+                            
+                            if opp.is_profitable(min_profit):
+                                logger.success(f"🎯 Okazja: {asset} | Spread: {opp.spread_percent:.3f}%")
+                            else:
+                                logger.debug(f"❌ {asset}: {opp.spread_percent:.3f}% (za mały spread)")
+                                
+                    except Exception as e:
+                        logger.error(f"Błąd skanowania {asset}: {e}")
+        else:
+            # Sekwencyjne skanowanie (mniej requestów)
+            for asset in assets:
+                try:
+                    opp = self.scan_single(asset)
+                    if opp:
+                        opportunities.append(opp)
                         
-            except Exception as e:
-                logger.error(f"Błąd skanowania {asset}: {e}")
+                        if opp.is_profitable(min_profit):
+                            logger.success(f"🎯 Okazja: {asset} | Spread: {opp.spread_percent:.3f}%")
+                        else:
+                            logger.debug(f"❌ {asset}: {opp.spread_percent:.3f}% (za mały spread)")
+                            
+                except Exception as e:
+                    logger.error(f"Błąd skanowania {asset}: {e}")
         
         # Sortuj po potencjalnym zysku
         opportunities.sort(key=lambda x: x.net_profit_percent, reverse=True)

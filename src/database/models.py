@@ -11,8 +11,13 @@ TimescaleDB automatycznie partycjonuje dane po czasie,
 co daje 10-100x lepszą wydajność na dużych zbiorach danych.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
+
+
+def utcnow():
+    """Zwraca aktualny czas UTC (kompatybilne z Python 3.12+)."""
+    return datetime.now(timezone.utc)
 from sqlalchemy import (
     Column, String, Float, Integer, DateTime, BigInteger,
     Index, UniqueConstraint, ForeignKey, Boolean, Text, Enum
@@ -66,7 +71,7 @@ class OHLCV(Base):
     quote_volume = Column(Float, nullable=True)  # Wolumen w walucie kwotowanej
     trades_count = Column(Integer, nullable=True)  # Liczba transakcji
     
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     
     __table_args__ = (
         UniqueConstraint('timestamp', 'exchange', 'symbol', 'timeframe', name='uq_ohlcv'),
@@ -253,7 +258,7 @@ class Portfolio(Base):
     name = Column(String(100), nullable=False, unique=True)
     description = Column(Text, nullable=True)
     initial_capital = Column(Float, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
 
 class Position(Base):
