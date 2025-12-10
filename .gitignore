@@ -87,6 +87,9 @@ secrets/
 *.pem
 *.key
 credentials.json
+.keys/
+.keys/*
+!.keys/.gitkeep
 
 # === OS ===
 .DS_Store

@@ -47,6 +47,7 @@ tiktoken>=0.5.0
 transformers>=4.36.0
 sentence-transformers>=2.2.0
 vaderSentiment>=3.3.2
+praw>=7.7.0              # Reddit API wrapper
 
 # === Wizualizacje ===
 matplotlib>=3.8.0
@@ -64,6 +65,7 @@ sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.9      # PostgreSQL driver
 redis>=5.0.0
 alembic>=1.13.0             # Migracje bazy danych
+python-dotenv>=1.0.0        # Ładowanie .env
 
 # === TimescaleDB ===
 # Instalacja rozszerzenia w PostgreSQL:

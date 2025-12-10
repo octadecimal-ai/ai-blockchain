@@ -20,6 +20,7 @@ import requests
 from loguru import logger
 
 # dYdX v4 API endpoints
+# Base URL dla publicznych endpointów (candles, markets, orderbook, etc.)
 DYDX_INDEXER_API = "https://indexer.dydx.trade/v4"
 DYDX_TESTNET_API = "https://indexer.v4testnet.dydx.exchange/v4"
 
