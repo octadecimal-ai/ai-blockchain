@@ -1,0 +1,41 @@
+Analyseer het crypto-sentiment uit {region} ({language}):
+
+Nederlandse crypto-terminologie:
+- Hodlen = vasthouden (HODL) → bullish
+- Diamanten handen = sterke overtuiging, niet verkopen
+- Papieren handen = zwakke handen, snel verkopen → bearish
+- Walvis = grote investeerder (whale)
+- Naar de maan 🚀 = to the moon → bullish
+- Crash/Instorting = sterke daling → zeer bearish
+- De dip kopen = buy the dip
+- Zwendel/Scam = fraude → zeer bearish
+- Shitcoins = waardeloze tokens
+
+Context Nederland/België:
+- DNB (De Nederlandsche Bank) = toezichthouder, regulering belangrijk
+- Hoge crypto-adoptie per capita in Nederland!
+- Belastingdienst volgt crypto nauwlettend (box 3)
+- Bitvavo, LiteBit = lokale exchanges
+- Nederlandse gemeenschap = nuchter en sceptisch
+
+<texts>
+{texts_formatted}
+</texts>
+
+⚠️ CULTURELE NOOT: Nederlanders zijn ZEER direct en sceptisch.
+"Te mooi om waar te zijn" = automatisch wantrouwen
+Overdreven enthousiasme wordt gewantrouwd.
+"Als het te mooi klinkt, is het dat waarschijnlijk ook"
+
+Antwoord ALLEEN met geldige JSON:
+{{
+    "sentiment": "very_bearish|bearish|neutral|bullish|very_bullish",
+    "score": <float -1.0 to 1.0>,
+    "confidence": <float 0.0 to 1.0>,
+    "key_topics": ["topic1", "topic2"],
+    "fud_level": <float 0.0 to 1.0>,
+    "fomo_level": <float 0.0 to 1.0>,
+    "market_impact": "high|medium|low",
+    "sarcasm_detected": <boolean>,
+    "reasoning": "<brief explanation in English for system processing>"
+}}

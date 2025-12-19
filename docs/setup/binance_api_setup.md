@@ -2,86 +2,122 @@
 
 ## 📋 Wymagania
 
-Aby uruchomić testy integracyjne z Binance API, potrzebujesz:
+Binance API **NIE WYMAGA API keys** dla podstawowych operacji (pobieranie danych rynkowych, tickerów, świec OHLCV).
 
-1. **Konto Binance** (możesz użyć testnet/sandbox)
-2. **API Key** i **Secret Key**
+## 🔑 Kiedy potrzebujesz API Keys?
 
-## 🔑 Jak uzyskać API Keys
+API keys są wymagane **TYLKO** dla:
+- **Trading** (otwieranie/zamykanie pozycji)
+- **Zarządzanie portfelem** (sprawdzanie salda)
+- **Private endpoints** (historia zamówień, depozyty, wypłaty)
 
-### Krok 1: Utwórz konto Binance
+## ✅ Operacje BEZ API Keys (Publiczne Endpointy)
 
-1. Przejdź na [binance.com](https://www.binance.com)
-2. Zarejestruj się i zweryfikuj konto (jeśli wymagane)
+Możesz używać BinanceCollector bez API keys do:
+- ✅ Pobierania danych historycznych (OHLCV)
+- ✅ Pobierania aktualnych cen (ticker)
+- ✅ Pobierania listy dostępnych par handlowych
+- ✅ Pobierania danych z wielu lat wstecz
 
-### Krok 2: Utwórz API Key
+## 🧪 Testy integracyjne
 
-1. Zaloguj się do Binance
-2. Przejdź do **API Management**: 
-   - Menu użytkownika (ikonka profilu) → **API Management**
-3. Kliknij **Create API**
-4. Wybierz typ:
-   - **Read-only** - dla testów (bezpieczniejsze)
-   - **Enable Spot & Margin Trading** - jeśli potrzebujesz tradingu
-5. Zweryfikuj tożsamość (SMS/Email)
-6. **Zapisz klucze** - Secret Key jest widoczny tylko raz!
+Dla testów integracyjnych w tym projekcie **nie potrzebujesz API keys** - wszystkie testy używają publicznych endpointów.
 
-### Krok 3: Skonfiguruj w projekcie
+## 🔧 Konfiguracja
 
-1. Skopiuj `config/env.example.txt` do `.env`:
-```bash
-cp config/env.example.txt .env
-```
-
-2. Dodaj klucze do `.env`:
-```env
-BINANCE_API_KEY=twoj_api_key_tutaj
-BINANCE_SECRET=twoj_secret_key_tutaj
-```
-
-3. **WAŻNE**: Dodaj `.env` do `.gitignore` (już jest dodany)
-
-## 🧪 Tryb Sandbox (Testnet)
-
-Dla testów możesz użyć trybu sandbox:
+### Tryb Publiczny (bez API keys) - Domyślny
 
 ```python
 from src.collectors.exchange.binance_collector import BinanceCollector
 
-collector = BinanceCollector(sandbox=True)
+# Działa bez API keys!
+collector = BinanceCollector(sandbox=False)
+
+# Pobierz dane historyczne
+df = collector.fetch_historical(
+    symbol="BTC/USDT",
+    timeframe="1h",
+    start_date=datetime(2022, 1, 1),
+    end_date=datetime(2022, 12, 31)
+)
 ```
 
-**Uwaga**: Sandbox używa testowych danych i nie wymaga prawdziwych środków.
+### Tryb z API Keys (tylko dla tradingu)
 
-## 🔒 Bezpieczeństwo
+Jeśli chcesz używać Binance do tradingu, potrzebujesz API keys:
 
-- **Nigdy** nie commituj API keys do git
-- Używaj **Read-only** keys dla testów
-- Włącz **IP Whitelist** w ustawieniach API (opcjonalnie)
-- Regularnie rotuj klucze
+1. Przejdź na [Binance API Management](https://www.binance.com/en/my/settings/api-management)
+2. Utwórz API Key z odpowiednimi uprawnieniami
+3. Dodaj do `.env`:
+```env
+BINANCE_API_KEY=twoj_api_key
+BINANCE_SECRET=twoj_secret
+```
+
+4. Użyj w kodzie:
+```python
+from src.collectors.exchange.binance_collector import BinanceCollector
+
+collector = BinanceCollector(
+    sandbox=False,
+    api_key=os.getenv('BINANCE_API_KEY'),
+    secret=os.getenv('BINANCE_SECRET')
+)
+```
 
 ## ⚠️ Limity API
 
-Binance ma limity requestów:
-- **1200 requests per minute** (weighted)
-- Testy integracyjne mogą przekroczyć limity - używaj z umiarem
+Binance API:
+- **Rate limiting**: 1200 requests/minute dla publicznych endpointów
+- **Weight limits**: Różne endpointy mają różne wagi
+- Kolektor automatycznie używa rate limiting (`enableRateLimit: True`)
+
+## 📚 Publiczne Endpointy (bez API keys)
+
+- `GET /api/v3/klines` - świece OHLCV ✅
+- `GET /api/v3/ticker/24hr` - ticker 24h ✅
+- `GET /api/v3/exchangeInfo` - informacje o rynku ✅
+- `GET /api/v3/ticker/price` - aktualna cena ✅
+
+## 🔒 Prywatne Endpointy (wymagają API keys)
+
+- `POST /api/v3/order` - złożenie zamówienia ❌
+- `GET /api/v3/account` - informacje o koncie ❌
+- `GET /api/v3/myTrades` - historia transakcji ❌
+- `GET /api/v3/openOrders` - otwarte zamówienia ❌
 
 ## 🐛 Rozwiązywanie problemów
 
-### Błąd: "Invalid API-key"
-- Sprawdź czy klucze są poprawne
-- Sprawdź czy nie ma dodatkowych spacji w `.env`
+### Błąd: 429 Too Many Requests
+- API ma rate limiting
+- Kolektor automatycznie używa rate limiting
+- Jeśli problem się powtarza, zwiększ opóźnienia między requestami
 
-### Błąd: "IP address not whitelisted"
-- Wyłącz IP Whitelist w ustawieniach API
-- Lub dodaj swój IP do whitelist
-
-### Błąd: "API-key format invalid"
-- Sprawdź format kluczy (powinny być długie stringi)
-- Upewnij się że nie używasz kluczy z innych giełd
+### Błąd: 403 Forbidden
+- Sprawdź, czy nie próbujesz użyć prywatnych endpointów bez API keys
+- Publiczne endpointy (OHLCV, ticker) nie wymagają autoryzacji
 
 ## 📚 Dokumentacja
 
 - [Binance API Docs](https://binance-docs.github.io/apidocs/spot/en/)
-- [API Management](https://www.binance.com/en/my/settings/api-management)
+- [ccxt Binance Documentation](https://docs.ccxt.com/#/README?id=binance)
 
+## 💡 Przykład użycia bez API keys
+
+```python
+from src.collectors.exchange.binance_collector import BinanceCollector
+from datetime import datetime
+
+# Inicjalizacja bez API keys - działa!
+collector = BinanceCollector()
+
+# Pobierz dane z 2022, 2023, 2024
+for year in [2022, 2023, 2024]:
+    df = collector.fetch_historical(
+        symbol="BTC/USDT",
+        timeframe="1h",
+        start_date=datetime(year, 1, 1),
+        end_date=datetime(year, 12, 31)
+    )
+    print(f"{year}: {len(df)} świec")
+```

@@ -9,8 +9,6 @@
 #   docker-compose down           # Zatrzymaj
 #   docker-compose down -v        # Zatrzymaj i usuń dane
 
-version: '3.8'
-
 services:
   # === TimescaleDB (PostgreSQL + Time Series) ===
   timescaledb:
@@ -25,7 +23,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-super_secret_password_change_me}
     volumes:
       - timescaledb_data:/var/lib/postgresql/data
-      - ./docker/init-db:/docker-entrypoint-initdb.d
+      - ./src/database/migrations:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ai_blockchain"]
       interval: 10s

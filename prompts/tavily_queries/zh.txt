@@ -1,0 +1,63 @@
+# Tavily Search Queries - Chinese (中文)
+# ======================================
+# 中国/香港/台湾加密货币搜索查询
+# Rotate through these for diverse local results
+
+# --- 突发新闻 Breaking News ---
+比特币最新消息今天
+BTC行情分析今日
+加密货币新闻中国
+数字货币政策最新
+
+# --- 交易所新闻 Exchange News ---
+币安最新公告
+OKX交易所新闻
+火币消息今天
+Bitget公告
+
+# --- 监管政策 Regulatory ---
+中国加密货币政策
+央行数字货币DCEP
+香港虚拟资产牌照
+加密货币禁令最新
+
+# --- 社区情绪 Social Sentiment ---
+比特币微博热搜
+币圈韭菜讨论
+BTC多空分析
+加密货币恐惧贪婪指数
+
+# --- 行情分析 Market Analysis ---
+比特币价格预测
+BTC技术分析突破
+加密货币暴涨暴跌
+比特币支撑阻力位
+
+# --- 矿业新闻 Mining News ---
+比特币挖矿政策
+矿工抛售BTC
+算力变化最新
+矿场新闻中国
+
+# --- 项目新闻 Project News ---
+以太坊最新消息
+山寨币行情分析
+DeFi协议新闻
+NFT市场中国
+
+# --- 大户动向 Whale Activity ---
+比特币巨鲸转账
+大户买入卖出
+交易所资金流向
+链上数据分析
+
+# --- 香港特定 Hong Kong Specific ---
+香港加密货币交易所
+香港虚拟资产政策
+港股比特币ETF
+香港Web3新闻
+
+# --- 台湾特定 Taiwan Specific ---
+台灣加密貨幣新聞
+比特幣台灣交易所
+數位資產監管台灣

@@ -1,0 +1,48 @@
+Analysieren Sie das Krypto-Sentiment aus {region} ({language}):
+
+Deutsche Krypto-Terminologie:
+- Hodln = Halten (eingedeutschtes HODL) → bullisch
+- Diamanthände = starke Überzeugung, nicht verkaufen
+- Papierhände = schwache Händer, schnell verkaufen → bärisch
+- Wal/Wale = Großinvestoren
+- Zum Mond = to the moon → bullisch
+- Absturz/Crash = starker Preisverfall → sehr bärisch
+- Rallye = starker Anstieg → bullisch
+- Shitcoins = wertlose Altcoins
+
+DACH-Region Kontext (Deutschland, Österreich, Schweiz):
+
+DEUTSCHLAND:
+- BaFin = Finanzaufsicht, Regulierung wichtig
+- 1 Jahr Haltefrist = STEUERFREI! → beeinflusst Verkaufsentscheidungen
+- Deutsche Banken + Krypto = bullisches Signal
+- Strenge KYC-Anforderungen
+
+ÖSTERREICH:
+- FMA = österreichischer Regulator
+- Ähnlich wie Deutschland
+
+SCHWEIZ:
+- Crypto Valley (Zug) = positive Nachrichten
+- Banken-freundlicher
+- SIX Digital Exchange
+
+<texts>
+{texts_formatted}
+</texts>
+
+⚠️ KULTURELLER HINWEIS: Deutsche Anleger sind konservativ und skeptisch.
+Übertriebene Begeisterung wird misstraut. "Das klingt zu gut" = Warnung!
+
+Antworten Sie NUR mit gültigem JSON:
+{{
+    "sentiment": "very_bearish|bearish|neutral|bullish|very_bullish",
+    "score": <float -1.0 to 1.0>,
+    "confidence": <float 0.0 to 1.0>,
+    "key_topics": ["topic1", "topic2"],
+    "fud_level": <float 0.0 to 1.0>,
+    "fomo_level": <float 0.0 to 1.0>,
+    "market_impact": "high|medium|low",
+    "sarcasm_detected": <boolean>,
+    "reasoning": "<brief explanation in English for system processing>"
+}}

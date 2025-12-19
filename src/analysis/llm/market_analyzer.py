@@ -7,10 +7,12 @@ Generuje raporty, analizuje newsy i tworzy podsumowania trendów.
 
 import os
 import json
+import time
 from typing import Optional, List
 from datetime import datetime, timezone
 import pandas as pd
 from loguru import logger
+from src.utils.api_logger import get_api_logger
 
 # Obsługa różnych providerów LLM
 try:
@@ -69,7 +71,7 @@ Zawsze podkreślaj, że to analiza edukacyjna, nie porada finansowa."""
         self.provider = provider
         
         if provider == "anthropic":
-            self.model = model or "claude-3-sonnet-20240229"
+            self.model = model or "claude-3-5-haiku-20241022"
             self.llm = ChatAnthropic(
                 model=self.model,
                 anthropic_api_key=api_key or os.getenv("ANTHROPIC_API_KEY"),
@@ -87,7 +89,10 @@ Zawsze podkreślaj, że to analiza edukacyjna, nie porada finansowa."""
         else:
             raise ValueError(f"Nieznany provider: {provider}")
         
-        logger.info(f"Zainicjalizowano LLM: {self.provider}/{self.model}")
+        logger.debug(f"Zainicjalizowano LLM: {self.provider}/{self.model}")
+        
+        # Inicjalizuj API logger
+        self.api_logger = get_api_logger()
     
     def generate_market_report(
         self,
@@ -178,10 +183,64 @@ Pamiętaj: to analiza edukacyjna, NIE porada inwestycyjna."""
             HumanMessage(content=prompt)
         ]
         
-        logger.info(f"Generuję raport dla {symbol}...")
-        response = self.llm.invoke(messages)
+        # Raport jest generowany - szczegóły są logowane tylko do pliku przez API logger
         
-        return response.content
+        # Przygotuj messages do logowania
+        messages_for_log = [
+            {"role": msg.type if hasattr(msg, 'type') else str(type(msg).__name__), "content": msg.content}
+            for msg in messages
+        ]
+        
+        # Loguj request
+        self.api_logger.log_request(
+            provider=self.provider,
+            model=self.model,
+            messages=messages_for_log,
+            temperature=getattr(self.llm, 'temperature', None),
+            max_tokens=getattr(self.llm, 'max_tokens', None),
+            metadata={"method": "generate_market_report", "symbol": symbol}
+        )
+        
+        # Wykonaj request i zmierz czas
+        start_time = time.time()
+        try:
+            response = self.llm.invoke(messages)
+            response_time_ms = (time.time() - start_time) * 1000
+            
+            # Pobierz usage z response jeśli dostępne
+            input_tokens = None
+            output_tokens = None
+            if hasattr(response, 'response_metadata'):
+                usage = response.response_metadata.get('usage', {}) if response.response_metadata else {}
+                input_tokens = usage.get('input_tokens')
+                output_tokens = usage.get('output_tokens')
+            
+            # Loguj response
+            self.api_logger.log_response(
+                provider=self.provider,
+                model=self.model,
+                response_text=response.content,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                response_time_ms=response_time_ms,
+                metadata={"method": "generate_market_report", "symbol": symbol}
+            )
+            
+            return response.content
+        except Exception as e:
+            response_time_ms = (time.time() - start_time) * 1000
+            error_msg = str(e)
+            
+            # Loguj błąd
+            self.api_logger.log_response(
+                provider=self.provider,
+                model=self.model,
+                response_text="",
+                response_time_ms=response_time_ms,
+                metadata={"method": "generate_market_report", "symbol": symbol},
+                error=error_msg
+            )
+            raise
     
     def analyze_sentiment(self, texts: List[str], topic: str = "Bitcoin") -> dict:
         """
@@ -219,21 +278,74 @@ Odpowiedz w formacie JSON:
             HumanMessage(content=prompt)
         ]
         
-        response = self.llm.invoke(messages)
+        # Przygotuj messages do logowania
+        messages_for_log = [
+            {"role": msg.type if hasattr(msg, 'type') else str(type(msg).__name__), "content": msg.content}
+            for msg in messages
+        ]
         
-        # Próba parsowania JSON z odpowiedzi
+        # Loguj request
+        self.api_logger.log_request(
+            provider=self.provider,
+            model=self.model,
+            messages=messages_for_log,
+            temperature=getattr(self.llm, 'temperature', None),
+            max_tokens=getattr(self.llm, 'max_tokens', None),
+            metadata={"method": "analyze_sentiment", "topic": topic}
+        )
+        
+        # Wykonaj request i zmierz czas
+        start_time = time.time()
         try:
-            import json
-            # Znajdź JSON w odpowiedzi
-            content = response.content
-            start = content.find('{')
-            end = content.rfind('}') + 1
-            if start != -1 and end > start:
-                return json.loads(content[start:end])
+            response = self.llm.invoke(messages)
+            response_time_ms = (time.time() - start_time) * 1000
+            
+            # Pobierz usage z response jeśli dostępne
+            input_tokens = None
+            output_tokens = None
+            if hasattr(response, 'response_metadata'):
+                usage = response.response_metadata.get('usage', {}) if response.response_metadata else {}
+                input_tokens = usage.get('input_tokens')
+                output_tokens = usage.get('output_tokens')
+            
+            # Loguj response
+            self.api_logger.log_response(
+                provider=self.provider,
+                model=self.model,
+                response_text=response.content,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                response_time_ms=response_time_ms,
+                metadata={"method": "analyze_sentiment", "topic": topic}
+            )
+            
+            # Próba parsowania JSON z odpowiedzi
+            try:
+                import json
+                # Znajdź JSON w odpowiedzi
+                content = response.content
+                start = content.find('{')
+                end = content.rfind('}') + 1
+                if start != -1 and end > start:
+                    return json.loads(content[start:end])
+            except Exception as e:
+                logger.warning(f"Nie udało się sparsować JSON: {e}")
+            
+            return {"raw_response": response.content}
         except Exception as e:
-            logger.warning(f"Nie udało się sparsować JSON: {e}")
-        
-        return {"raw_response": response.content}
+            response_time_ms = (time.time() - start_time) * 1000
+            error_msg = str(e)
+            
+            # Loguj błąd
+            self.api_logger.log_response(
+                provider=self.provider,
+                model=self.model,
+                response_text="",
+                response_time_ms=response_time_ms,
+                metadata={"method": "analyze_sentiment", "topic": topic},
+                error=error_msg
+            )
+            raise
     
     def explain_anomaly(
         self,
@@ -273,8 +385,62 @@ Bądź konkretny i bazuj na typowych wzorcach rynkowych."""
             HumanMessage(content=prompt)
         ]
         
-        response = self.llm.invoke(messages)
-        return response.content
+        # Przygotuj messages do logowania
+        messages_for_log = [
+            {"role": msg.type if hasattr(msg, 'type') else str(type(msg).__name__), "content": msg.content}
+            for msg in messages
+        ]
+        
+        # Loguj request
+        self.api_logger.log_request(
+            provider=self.provider,
+            model=self.model,
+            messages=messages_for_log,
+            temperature=getattr(self.llm, 'temperature', None),
+            max_tokens=getattr(self.llm, 'max_tokens', None),
+            metadata={"method": "explain_anomaly", "anomaly_type": anomaly_type}
+        )
+        
+        # Wykonaj request i zmierz czas
+        start_time = time.time()
+        try:
+            response = self.llm.invoke(messages)
+            response_time_ms = (time.time() - start_time) * 1000
+            
+            # Pobierz usage z response jeśli dostępne
+            input_tokens = None
+            output_tokens = None
+            if hasattr(response, 'response_metadata'):
+                usage = response.response_metadata.get('usage', {}) if response.response_metadata else {}
+                input_tokens = usage.get('input_tokens')
+                output_tokens = usage.get('output_tokens')
+            
+            # Loguj response
+            self.api_logger.log_response(
+                provider=self.provider,
+                model=self.model,
+                response_text=response.content,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                response_time_ms=response_time_ms,
+                metadata={"method": "explain_anomaly", "anomaly_type": anomaly_type}
+            )
+            
+            return response.content
+        except Exception as e:
+            response_time_ms = (time.time() - start_time) * 1000
+            error_msg = str(e)
+            
+            # Loguj błąd
+            self.api_logger.log_response(
+                provider=self.provider,
+                model=self.model,
+                response_text="",
+                response_time_ms=response_time_ms,
+                metadata={"method": "explain_anomaly", "anomaly_type": anomaly_type},
+                error=error_msg
+            )
+            raise
 
 
 # === Przykład użycia ===

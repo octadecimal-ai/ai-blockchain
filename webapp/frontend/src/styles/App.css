@@ -1,0 +1,200 @@
+.app {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #1a1a1a;
+}
+
+.app-header {
+  padding: 1rem 2rem;
+  background: #2a2a2a;
+  border-bottom: 2px solid #3a3a3a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.app-header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.time-display {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.time-display span {
+  font-size: 1rem;
+  color: #ccc;
+  font-family: 'Courier New', monospace;
+}
+
+.play-button {
+  padding: 0.5rem 1rem;
+  background: #4a9eff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.play-button:hover {
+  background: #3a8eef;
+}
+
+.play-button.playing {
+  background: #ff6b6b;
+}
+
+.play-button.playing:hover {
+  background: #ff5555;
+}
+
+.day-night-button {
+  padding: 0.5rem 1rem;
+  background: #3a3a3a;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.2s;
+  margin-left: 0.5rem;
+}
+
+.day-night-button:hover {
+  background: #4a4a4a;
+}
+
+.day-night-button.active {
+  background: #4a9eff;
+  color: #fff;
+}
+
+.day-night-button.active:hover {
+  background: #3a8eef;
+}
+
+.map-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 400px; /* Minimalna wysokość, żeby kontener nie był pusty */
+  background: #1a1a1a; /* Tło, żeby było widoczne podczas ładowania */
+}
+
+.map-container > div {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 400px; /* Minimalna wysokość */
+  position: relative;
+  z-index: 1; /* Niższy z-index niż map-loading */
+}
+
+/* Upewnij się, że mapa jest widoczna */
+.map-container .gm-style {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Ukryj loading screen gdy mapa jest załadowana */
+.map-container:has(.gm-style) .map-loading {
+  display: none !important;
+  z-index: -1 !important;
+}
+
+.map-error {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #2a2a2a;
+  color: #ff6b6b;
+  font-size: 1.2rem;
+}
+
+.map-error p {
+  margin: 0.5rem 0;
+}
+
+.map-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #1a1a1a;
+  color: #4a9eff;
+  font-size: 1.2rem;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10; /* Wyższy z-index, żeby był na wierzchu podczas ładowania */
+}
+
+/* Ukryj loading screen gdy mapa jest załadowana */
+.map-container:has(.gm-style) .map-loading {
+  display: none;
+}
+
+.app-loading {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #3a3a3a;
+  border-top: 4px solid #4a9eff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.app-error {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #1a1a1a;
+  color: #ff6b6b;
+}
+
+.app-error h2 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.app-error p {
+  font-size: 1.2rem;
+  color: #ccc;
+}
+

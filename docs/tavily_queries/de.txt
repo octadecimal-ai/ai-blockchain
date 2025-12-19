@@ -1,0 +1,62 @@
+# Tavily Search Queries - German (Deutsch)
+# ========================================
+# DACH Region: Deutschland, Österreich, Schweiz
+# Konservativer, regulierter Markt
+
+# --- Aktuelle Nachrichten Breaking News ---
+Bitcoin Nachrichten heute
+BTC Kurs Analyse aktuell
+Kryptowährung News Deutschland
+Krypto Markt Update
+
+# --- Börsen Exchanges ---
+Kraken Deutschland News
+Bitvavo Nachrichten
+Bitcoin.de Ankündigung
+Bison App Update
+
+# --- Regulierung Regulatory ---
+BaFin Kryptowährung Regulierung
+MiCA Verordnung EU Krypto
+Krypto Steuern Deutschland
+Finanzamt Bitcoin Meldung
+
+# --- Steuer (sehr wichtig!) Tax ---
+Bitcoin Steuererklärung Deutschland
+Kryptowährung Haltefrist ein Jahr
+Krypto Gewinn versteuern
+Bitcoin steuerfrei nach Jahr
+
+# --- Marktanalyse Market Analysis ---
+Bitcoin Chart Analyse heute
+BTC technische Analyse
+Kryptowährung Prognose
+Bitcoin Unterstützung Widerstand
+
+# --- Institutionell Institutional ---
+Deutsche Bank Bitcoin
+Sparkasse Kryptowährung
+institutionelle Investoren Krypto
+Bitcoin ETF Deutschland
+
+# --- Schweiz Specific ---
+Crypto Valley Zug News
+Schweiz Bitcoin Regulierung
+Schweizer Banken Krypto
+SIX Digital Exchange
+
+# --- Österreich Specific ---
+Bitpanda News Österreich
+FMA Kryptowährung
+Österreich Bitcoin Steuer
+
+# --- Community ---
+Bitcoin Twitter Deutschland
+Krypto Reddit deutsch
+BTC Telegram Gruppen
+Kryptowährung Forum
+
+# --- Altcoins ---
+Ethereum News deutsch
+Altcoins Analyse heute
+DeFi Projekte Deutschland

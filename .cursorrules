@@ -1,0 +1,67 @@
+# Zasady Projektu AI-Blockchain
+
+## Podstawowe Zasady
+
+### 1. Zasada Prawdziwości Danych
+**NIGDY nie używamy nieprawdziwych, symulowanych ani szacowanych danych w produkcji.**
+
+- ✅ Używamy tylko rzeczywistych danych z API giełd lub bazy danych
+- ✅ Jeśli dane nie są dostępne, pozostawiamy pole jako NULL/None zamiast symulować
+- ❌ NIE szacujemy bid/ask/spread jeśli nie mamy rzeczywistych danych z orderbook
+- ❌ NIE generujemy przykładowych wartości dla brakujących danych
+- ✅ W trybie backtestingu używamy rzeczywistych danych historycznych z bazy
+
+**Wyjątki:**
+- Tylko w trybie development/testowym można używać mock data z wyraźnym oznaczeniem
+- Symulowane dane muszą być wyraźnie oznaczone jako `_simulated` lub `_mock`
+
+### 2. Zasada Źródeł Danych
+- Dane OHLCV: z bazy danych (pobrane z Binance/dYdX)
+- Funding rates: z bazy danych (pobrane z Binance Futures)
+- Open interest: z bazy danych (pobrane z Binance Futures lub regularnie zbierane)
+- Bid/Ask/Spread: tylko z rzeczywistego orderbook API, nigdy szacowane
+
+### 3. Zasada Backtestingu
+- Backtesting używa tylko rzeczywistych danych historycznych
+- Jeśli dane nie są dostępne dla danego okresu, backtest nie może być uruchomiony
+- Strategie muszą obsługiwać brakujące dane (None/NULL) zamiast zakładać wartości domyślne
+
+### 4. Zasada Logowania
+- Wszystkie brakujące dane muszą być logowane jako WARNING
+- Symulowane dane (jeśli użyte w dev/test) muszą być logowane jako DEBUG z oznaczeniem
+
+### 5. Zasada Testowania
+**ZAWSZE testuj zmiany przed stwierdzeniem, że coś działa.**
+
+- ✅ Przed stwierdzeniem, że funkcjonalność działa, MUSISZ ją przetestować
+- ✅ Używaj narzędzi do testowania (browser tools, curl, testy jednostkowe)
+- ✅ Sprawdzaj logi konsoli przeglądarki i backendu
+- ✅ Weryfikuj, że endpointy zwracają poprawne dane
+- ❌ NIE stwierdzaj, że coś działa bez faktycznego testowania
+- ✅ Jeśli wprowadzasz zmiany w API, przetestuj endpoint bezpośrednio
+- ✅ Jeśli wprowadzasz zmiany w frontendzie, sprawdź w przeglądarce czy działa
+
+## Implementacja
+
+### Przykład poprawnego podejścia:
+```python
+# ✅ DOBRZE - używamy rzeczywistych danych lub NULL
+ticker['bid'] = orderbook_data.get('bid') if orderbook_data else None
+ticker['ask'] = orderbook_data.get('ask') if orderbook_data else None
+ticker['spread'] = orderbook_data.get('spread') if orderbook_data else None
+
+# ❌ ŹLE - nie szacujemy
+ticker['bid'] = price - estimated_spread  # NIE!
+```
+
+### Przykład w trybie backtestingu:
+```python
+# ✅ DOBRZE - pobieramy z bazy lub zostawiamy None
+funding_df = db.get_funding_rates(...)
+if not funding_df.empty:
+    ticker['funding_rate'] = funding_df.loc[timestamp, 'funding_rate']
+else:
+    ticker['funding_rate'] = None  # Nie symulujemy!
+    logger.warning(f"Brak funding rates dla {timestamp}")
+```
+

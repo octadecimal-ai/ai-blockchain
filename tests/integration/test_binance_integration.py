@@ -18,7 +18,13 @@ class TestBinanceIntegration:
     
     @pytest.fixture
     def collector(self):
-        """Inicjalizacja kolektora z API keys."""
+        """Inicjalizacja kolektora w trybie sandbox (nie wymaga API keys)."""
+        # Binance sandbox nie wymaga API keys dla publicznych endpointów
+        return BinanceCollector(sandbox=True)
+    
+    @pytest.fixture
+    def collector_production(self):
+        """Inicjalizacja kolektora produkcyjnego (wymaga API keys)."""
         api_key = os.getenv('BINANCE_API_KEY')
         secret = os.getenv('BINANCE_SECRET')
         
@@ -31,16 +37,16 @@ class TestBinanceIntegration:
             secret=secret
         )
     
-    def test_fetch_ohlcv_real(self, collector):
-        """Test pobierania rzeczywistych danych OHLCV."""
+    def test_fetch_ohlcv_sandbox(self, collector):
+        """Test pobierania danych OHLCV z sandbox."""
         df = collector.fetch_ohlcv("BTC/USDT", "1h", limit=10)
         
         assert len(df) > 0
         assert 'close' in df.columns
         assert df['close'].iloc[-1] > 0
     
-    def test_get_ticker_real(self, collector):
-        """Test pobierania rzeczywistego tickera."""
+    def test_get_ticker_sandbox(self, collector):
+        """Test pobierania tickera z sandbox."""
         ticker = collector.get_ticker("BTC/USDT")
         
         assert 'last' in ticker
@@ -48,15 +54,15 @@ class TestBinanceIntegration:
         assert 'bid' in ticker
         assert 'ask' in ticker
     
-    def test_get_available_symbols(self, collector):
-        """Test pobierania dostępnych symboli."""
+    def test_get_available_symbols_sandbox(self, collector):
+        """Test pobierania dostępnych symboli z sandbox."""
         symbols = collector.get_available_symbols()
         
         assert len(symbols) > 0
         assert "BTC/USDT" in symbols
     
-    def test_fetch_historical_real(self, collector):
-        """Test pobierania danych historycznych."""
+    def test_fetch_historical_sandbox(self, collector):
+        """Test pobierania danych historycznych z sandbox."""
         start = datetime.now() - timedelta(days=7)
         end = datetime.now()
         
@@ -65,4 +71,21 @@ class TestBinanceIntegration:
         assert len(df) > 0
         assert df.index[0] <= start
         assert df.index[-1] <= end
+    
+    def test_fetch_ohlcv_real(self, collector_production):
+        """Test pobierania rzeczywistych danych OHLCV (produkcja)."""
+        df = collector_production.fetch_ohlcv("BTC/USDT", "1h", limit=10)
+        
+        assert len(df) > 0
+        assert 'close' in df.columns
+        assert df['close'].iloc[-1] > 0
+    
+    def test_get_ticker_real(self, collector_production):
+        """Test pobierania rzeczywistego tickera (produkcja)."""
+        ticker = collector_production.get_ticker("BTC/USDT")
+        
+        assert 'last' in ticker
+        assert ticker['last'] > 0
+        assert 'bid' in ticker
+        assert 'ask' in ticker
 
