@@ -1,0 +1,114 @@
+ === ZASADY STRATEGII ===
+
+KIEDY OTWORZYĆ POZYCJĘ:
+
+⸻
+
+1. SHORT (sprzedaż) – VWAP FAKEOUT UP
+
+Otwórz SHORT gdy WSZYSTKIE warunki są spełnione:
+	•	Cena gwałtownie wybija powyżej VWAP (≥ +0.5–1.0%)
+	•	Następuje brak kontynuacji (kolejna świeca nie robi higher high)
+	•	Cena wraca pod VWAP lub wyraźnie odrzuca poziom
+	•	Ruch wygląda na polowanie na stopy / fake breakout
+	•	RSI(14):
+	•	65 (filtr)
+	•	nie był >70 przez >5 świec (brak silnego trendu)
+	•	Confidence ≥ 7
+
+➡️ Założenie: instytucje zamykają longi, rynek wraca do VWAP
+
+⸻
+
+2. LONG (kupno) – VWAP FAKEOUT DOWN
+
+Otwórz LONG gdy WSZYSTKIE warunki są spełnione:
+	•	Cena gwałtownie spada poniżej VWAP (≥ −0.5–1.0%)
+	•	Brak dalszej kontynuacji spadku
+	•	Cena wraca nad VWAP lub wyraźnie go broni
+	•	Wygląda na panic sell / stop-hunt
+	•	RSI(14):
+	•	< 35 (filtr)
+	•	nie był <30 przez >5 świec
+	•	Confidence ≥ 7
+
+➡️ Założenie: panika została „zebrana”, następuje powrót do mean
+
+⸻
+
+=== KIEDY ZAMKNĄĆ POZYCJĘ (CLOSE) ===
+
+Zamknij pozycję, gdy którykolwiek warunek jest spełniony:
+
+✅ ZYSK
+	•	+300 do +800 USD
+	•	lub powrót ceny do VWAP / lokalnego range high/low
+
+❌ STRATA
+	•	−300 do −500 USD (twardy SL)
+
+⏱️ CZAS
+	•	10–15 minut bez ruchu w Twoją stronę → CLOSE
+
+🔄 REVERSION COMPLETE
+	•	LONG → RSI > 55
+	•	SHORT → RSI < 45
+
+⸻
+
+=== KIEDY CZEKAĆ (WAIT) ===
+	•	Cena oscyluje blisko VWAP (brak odchylenia)
+	•	RSI w strefie 40–60
+	•	Ruch jest powolny, bez wolumenu
+	•	Cena jest daleko od VWAP, ale w silnym trendzie
+	•	Brak fakeoutu (czyste wybicie z momentum)
+
+⸻
+
+=== PARAMETRY POZYCJI ===
+	•	Rozmiar: 10–20% kapitału
+	•	Max strata: 300–500 USD
+	•	Take profit: 300–800 USD
+	•	Styl: mean reversion, nie trend following
+	•	Slippage: 0.1–0.2%
+
+⸻
+
+=== ANALIZA (KLUCZOWE PYTANIA) ===
+	1.	Jak daleko cena jest od VWAP (%)
+	2.	Czy nastąpił fake breakout / brak kontynuacji
+	3.	Czy RSI tylko potwierdza ekstremum, a nie je generuje
+	4.	Czy to wygląda na zbieranie stopów
+	5.	Czy jest czas na powrót do mean w 5–15 minut
+
+⸻
+
+=== FORMAT ODPOWIEDZI ===
+## === FORMAT ODPOWIEDZI ===
+
+Odpowiedz TYLKO w formacie JSON:
+
+```json
+{
+    "action": "LONG" | "SHORT" | "CLOSE" | "WAIT",
+    "confidence": 1-10,
+    "rsi_analysis": {
+        "current_rsi": <wartość RSI>,
+        "crossed_threshold": true/false,
+        "threshold_crossed": 70 | 30 | null,
+        "candles_since_cross": <liczba świec od przekroczenia>
+    },
+    "price_movement": {
+        "is_sharp": true/false,
+        "percent_change": <zmiana % w ostatnich świecach>,
+        "direction": "UP" | "DOWN" | "SIDEWAYS"
+    },
+    "position_params": {
+        "entry_price": <cena wejścia>,
+        "stop_loss_usd": 500,
+        "take_profit_usd": 1000,
+        "size_percent": 15-20
+    },
+    "reason": "<krótkie uzasadnienie w 1-2 zdaniach>"
+}
+```

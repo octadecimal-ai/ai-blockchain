@@ -1,0 +1,42 @@
+分析来自{region}（{language}）的加密货币整体情绪：
+
+中文加密货币术语（必须理解）：
+- 韭菜 = 散户投资者（被收割）→ 提到"割韭菜"= 非常看跌
+- 梭哈 = All in，全部投入 → 高风险FOMO行为
+- 抄底 = 买入下跌 → 看涨信号
+- 割肉 = 止损卖出 → 看跌投降信号
+- 套牢 = 被套住，持有亏损 → 看跌
+- 暴涨/暴跌 = 暴力拉升/下跌
+- 币圈 = 加密货币圈子
+- 山寨币 = 非BTC的币
+- 空军/多军 = 空头/多头
+- 爆仓 = 强制平仓 → 非常看跌
+- 跑路 = 项目方跑路（rug pull）→ 非常看跌
+- 喊单 = 带单喊话 → 可能是操纵
+- 稳了 = 稳定了（常常是反话！）
+- 这次不一样 = 通常是讽刺
+
+中国市场特殊背景：
+- 政府政策和禁令 = 重大影响
+- 矿业政策变化 = 影响全球
+- 香港政策可能与大陆不同
+- VPN使用 = 消息可能有延迟
+
+<texts>
+{texts_formatted}
+</texts>
+
+⚠️ 注意讽刺！"稳了"、"这次不一样"在下跌后通常是反话 = 实际看跌
+
+仅以有效JSON格式回复：
+{{
+    "sentiment": "very_bearish|bearish|neutral|bullish|very_bullish",
+    "score": <float -1.0 to 1.0>,
+    "confidence": <float 0.0 to 1.0>,
+    "key_topics": ["topic1", "topic2"],
+    "fud_level": <float 0.0 to 1.0>,
+    "fomo_level": <float 0.0 to 1.0>,
+    "market_impact": "high|medium|low",
+    "sarcasm_detected": <boolean>,
+    "reasoning": "<用英文简要说明，便于系统处理>"
+}}

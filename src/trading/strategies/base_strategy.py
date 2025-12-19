@@ -36,6 +36,7 @@ class TradingSignal:
     
     reason: str = ""
     strategy: str = ""
+    observations: str = ""  # Obserwacje LLM (dla PromptStrategy)
     
     def __repr__(self):
         return f"<Signal {self.signal_type.value.upper()} {self.symbol} @ {self.price:.2f} (conf: {self.confidence}/10)>"
@@ -60,6 +61,8 @@ class BaseStrategy(ABC):
             config: Konfiguracja strategii
         """
         self.config = config or {}
+        # Domyślny timeframe dla strategii (może być nadpisany)
+        self.timeframe = self.config.get('timeframe', '1h')
     
     @abstractmethod
     def analyze(self, df: pd.DataFrame, symbol: str = "BTC-USD") -> Optional[TradingSignal]:

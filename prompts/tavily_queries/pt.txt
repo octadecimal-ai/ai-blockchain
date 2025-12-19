@@ -1,0 +1,76 @@
+# Tavily Search Queries - Portuguese (Português)
+# ==============================================
+# Brasil (maior mercado) + Portugal
+# Brasil: cultura day-trade forte
+
+# === BRASIL QUERIES ===
+
+# --- Notícias Brasil ---
+Bitcoin notícias Brasil hoje
+criptomoedas mercado brasileiro
+BTC preço análise Binance
+cripto notícias urgentes
+
+# --- Exchanges Brasil ---
+Binance Brasil novidades
+Mercado Bitcoin notícias
+Foxbit anúncio
+NovaDax exchange
+
+# --- PIX e Bancos (important!) ---
+PIX criptomoedas Brasil
+Nubank Bitcoin novidades
+Mercado Pago cripto
+banco digital criptomoedas
+
+# --- Regulação Brasil ---
+Receita Federal criptomoedas
+imposto Bitcoin Brasil
+CVM regulação cripto
+lei criptomoedas Brasil
+
+# --- Day Trade (cultural!) ---
+day trade cripto Brasil
+scalping Bitcoin estratégia
+trade criptomoedas lucro
+análise gráfica BTC
+
+# --- Influenciadores ---
+cripto YouTube Brasil
+trader Bitcoin famoso
+análise técnica influencer
+
+# --- Sentimento ---
+Bitcoin medo ganância
+cripto Twitter Brasil
+comunidade Bitcoin BR
+
+# === PORTUGAL QUERIES ===
+
+# --- Notícias Portugal ---
+Bitcoin notícias Portugal
+criptomoedas mercado português
+cripto regulação Europa
+
+# --- Regulação Portugal ---
+imposto cripto Portugal
+Bitcoin fiscal Portugal
+MiCA União Europeia
+
+# --- Exchanges Portugal ---
+Binance Portugal
+Coinbase Europa
+cripto bancos portugueses
+
+# === GENERAL PORTUGUESE ===
+
+# --- Análise Mercado ---
+Bitcoin análise técnica hoje
+BTC previsão preço
+criptomoedas alta queda
+mercado cripto tendência
+
+# --- Altcoins ---
+Ethereum notícias hoje
+altcoins promissoras
+DeFi projetos análise

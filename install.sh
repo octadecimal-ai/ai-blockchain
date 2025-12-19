@@ -276,7 +276,107 @@ else
 fi
 
 # =============================================================================
-# 5. DOCKER (OPCJONALNIE)
+# 5. INICJALIZACJA BAZY DANYCH
+# =============================================================================
+print_header "🗄️  INICJALIZACJA BAZY DANYCH"
+
+# Sprawdź czy użytkownik chce zainicjalizować bazę
+INIT_DB=false
+if [ -f ".env" ]; then
+    # Sprawdź czy DATABASE_URL jest ustawiony
+    if grep -q "DATABASE_URL" .env && ! grep -q "^#.*DATABASE_URL" .env; then
+        read -p "Czy chcesz zainicjalizować bazę danych i załadować dane BTC/USDC? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            INIT_DB=true
+        fi
+    else
+        print_info "DATABASE_URL nie jest ustawiony w .env - pomijam inicjalizację bazy"
+    fi
+else
+    print_info "Plik .env nie istnieje - pomijam inicjalizację bazy"
+fi
+
+if [ "$INIT_DB" = true ]; then
+    print_info "Inicjalizacja bazy danych..."
+    
+    # Wykonaj migracje i utwórz tabele
+    python3 << PYTHON_EOF
+import sys
+import os
+from pathlib import Path
+
+# Dodaj ścieżkę projektu
+project_root = Path('$PROJECT_DIR')
+sys.path.insert(0, str(project_root))
+
+from dotenv import load_dotenv
+from loguru import logger
+
+# Konfiguracja loggera
+logger.remove()
+logger.add(sys.stderr, level="INFO", format="{message}")
+
+# Załaduj .env
+env_path = project_root / '.env'
+if env_path.exists():
+    load_dotenv(env_path)
+
+try:
+    from src.database.manager import DatabaseManager
+    from src.database.run_migrations import run_migrations
+    
+    database_url = os.getenv('DATABASE_URL')
+    use_timescale = os.getenv('USE_TIMESCALE', 'false').lower() == 'true'
+    
+    # Utwórz tabele
+    logger.info("Tworzenie tabel w bazie danych...")
+    db = DatabaseManager(database_url=database_url, use_timescale=use_timescale)
+    db.create_tables()
+    logger.info("✓ Tabele utworzone")
+    
+    # Wykonaj migracje SQL
+    logger.info("Wykonuję migracje SQL...")
+    if run_migrations(database_url=database_url, use_timescale=use_timescale):
+        logger.info("✓ Migracje wykonane")
+    else:
+        logger.warning("⚠ Niektóre migracje mogły się nie powieść (to może być normalne)")
+    
+    # Zapytaj o załadowanie danych BTC/USDC
+    print("\n📊 Dane BTC/USDC")
+    print("Czy chcesz pobrać dane historyczne BTC/USDC od 2020 roku?")
+    print("(Może to zająć kilka minut)")
+    response = input("Pobierz dane? (y/N): ").strip().lower()
+    
+    if response == 'y':
+        logger.info("Pobieranie danych BTC/USDC z Binance...")
+        from src.database.btcusdc_loader import BTCUSDCDataLoader
+        from datetime import datetime, timezone
+        
+        loader = BTCUSDCDataLoader(database_url=database_url, use_timescale=use_timescale)
+        start_date = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        count = loader.load_historical_data(start_date=start_date)
+        logger.info(f"✓ Zapisano {count} świec do bazy danych")
+    else:
+        logger.info("Pominięto pobieranie danych (możesz to zrobić później: ./scripts/init_btcusdc_data.sh)")
+        
+except Exception as e:
+    logger.error(f"Błąd podczas inicjalizacji bazy: {e}")
+    print(f"⚠ Nie udało się zainicjalizować bazy danych: {e}")
+    print("Możesz to zrobić później ręcznie:")
+    print("  python scripts/init_trading_db.py")
+    print("  ./scripts/init_btcusdc_data.sh")
+PYTHON_EOF
+
+    if [ $? -eq 0 ]; then
+        print_success "Baza danych zainicjalizowana"
+    else
+        print_warning "Inicjalizacja bazy danych zakończona z ostrzeżeniami"
+    fi
+fi
+
+# =============================================================================
+# 6. DOCKER (OPCJONALNIE)
 # =============================================================================
 if [ "$SKIP_DOCKER" = false ] && check_command docker && check_command docker-compose; then
     print_header "🐳 KONFIGURACJA DOCKER"
@@ -311,7 +411,7 @@ else
 fi
 
 # =============================================================================
-# 6. WERYFIKACJA INSTALACJI
+# 7. WERYFIKACJA INSTALACJI
 # =============================================================================
 print_header "✅ WERYFIKACJA INSTALACJI"
 
@@ -352,7 +452,116 @@ else
 fi
 
 # =============================================================================
-# 7. PODSUMOWANIE
+# 8. BTC/USDC AUTOMATYCZNA AKTUALIZACJA
+# =============================================================================
+print_header "🔄 KONFIGURACJA AUTOMATYCZNEJ AKTUALIZACJI"
+
+# Sprawdź czy użytkownik chce skonfigurować automatyczną aktualizację
+SETUP_UPDATER=false
+if [ -f ".env" ] && grep -q "DATABASE_URL" .env && ! grep -q "^#.*DATABASE_URL" .env; then
+    read -p "Czy chcesz skonfigurować automatyczną aktualizację danych BTC/USDC co 1 minutę? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        SETUP_UPDATER=true
+    fi
+fi
+
+if [ "$SETUP_UPDATER" = true ]; then
+    print_info "Konfiguracja automatycznej aktualizacji danych..."
+    
+    # Sprawdź czy systemd jest dostępny (Linux)
+    if command -v systemctl &> /dev/null && [ "$(uname)" != "Darwin" ]; then
+        print_info "Wykryto systemd - tworzę service..."
+        
+        # Utwórz plik service
+        SERVICE_FILE="/tmp/btcusdc-updater.service"
+        cat > "$SERVICE_FILE" << EOF
+[Unit]
+Description=BTC/USDC Data Updater - Automatyczna aktualizacja danych z Binance
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=$USER
+WorkingDirectory=$PROJECT_DIR
+Environment="PATH=$PROJECT_DIR/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=$PROJECT_DIR/venv/bin/python3 -m src.database.btcusdc_updater --interval 60
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+        
+        print_success "Plik service utworzony: $SERVICE_FILE"
+        print_info "Aby zainstalować service, uruchom jako root:"
+        print_info "  sudo cp $SERVICE_FILE /etc/systemd/system/btcusdc-updater.service"
+        print_info "  sudo systemctl daemon-reload"
+        print_info "  sudo systemctl enable btcusdc-updater.service"
+        print_info "  sudo systemctl start btcusdc-updater.service"
+    else
+        # macOS lub brak systemd - użyj launchd (macOS) lub po prostu skrypt
+        if [ "$(uname)" = "Darwin" ]; then
+            print_info "Wykryto macOS - tworzę LaunchAgent..."
+            
+            LAUNCH_AGENT_DIR="$HOME/Library/LaunchAgents"
+            mkdir -p "$LAUNCH_AGENT_DIR"
+            
+            PLIST_FILE="$LAUNCH_AGENT_DIR/com.ai-blockchain.btcusdc-updater.plist"
+            cat > "$PLIST_FILE" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.ai-blockchain.btcusdc-updater</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$PROJECT_DIR/venv/bin/python3</string>
+        <string>-m</string>
+        <string>src.database.btcusdc_updater</string>
+        <string>--interval</string>
+        <string>60</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>$PROJECT_DIR</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>$PROJECT_DIR/logs/btcusdc_updater.log</string>
+    <key>StandardErrorPath</key>
+    <string>$PROJECT_DIR/logs/btcusdc_updater.error.log</string>
+</dict>
+</plist>
+EOF
+            
+            print_success "LaunchAgent utworzony: $PLIST_FILE"
+            print_info "Aby uruchomić service, wykonaj:"
+            print_info "  launchctl load $PLIST_FILE"
+            print_info "  launchctl start com.ai-blockchain.btcusdc-updater"
+        else
+            # Inny system - po prostu pokaż jak uruchomić ręcznie
+            print_info "Brak systemd/launchd - uruchom ręcznie:"
+            print_info "  ./scripts/start_btcusdc_updater.sh"
+            print_info "Lub w tle:"
+            print_info "  nohup ./scripts/start_btcusdc_updater.sh > logs/btcusdc_updater.log 2>&1 &"
+        fi
+    fi
+    
+    print_info ""
+    print_info "Możesz również uruchomić updater ręcznie:"
+    print_info "  ./scripts/start_btcusdc_updater.sh"
+    print_info "Lub jednorazową aktualizację:"
+    print_info "  ./scripts/start_btcusdc_updater.sh --once"
+else
+    print_info "Pominięto konfigurację automatycznej aktualizacji"
+    print_info "Możesz uruchomić updater później: ./scripts/start_btcusdc_updater.sh"
+fi
+
+# =============================================================================
+# 9. PODSUMOWANIE
 # =============================================================================
 print_header "📋 PODSUMOWANIE INSTALACJI"
 
@@ -366,6 +575,7 @@ if [ "$ALL_OK" = true ]; then
     echo "  2. Aktywuj virtual environment: source venv/bin/activate"
     echo "  3. Uruchom notebook: jupyter notebook notebooks/01_getting_started.ipynb"
     echo "  4. (Opcjonalnie) Uruchom Docker: docker-compose up -d"
+    echo "  5. (Opcjonalnie) Uruchom automatyczną aktualizację: ./scripts/start_btcusdc_updater.sh"
     echo ""
 else
     echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

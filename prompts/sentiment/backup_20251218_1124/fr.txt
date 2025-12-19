@@ -1,0 +1,52 @@
+Analysez le sentiment crypto de {region} ({language}):
+
+Terminologie crypto française:
+- Hodler = conserver (HODL) → haussier
+- Baleine = gros investisseur (whale)
+- Vers la lune 🚀 = to the moon → haussier
+- Chute/Crash/Krach = forte baisse → très baissier
+- Mains de diamant/papier = diamond/paper hands
+- Acheter la baisse = buy the dip
+- Arnaque = scam → très baissier
+
+CONTEXTE RÉGIONAL IMPORTANT:
+
+FRANCE:
+- AMF = Autorité des Marchés Financiers (régulateur)
+- Régulation EU MiCA = impact majeur
+- Fiscalité 30% flat tax
+- Ledger = entreprise française (fierté nationale!)
+- Public généralement sceptique et analytique
+
+SUISSE ROMANDE:
+- Crypto Valley Zug = écosystème positif
+- Banques suisses + crypto = signal haussier
+- Réglementation favorable
+
+AFRIQUE FRANCOPHONE (Sénégal, Côte d'Ivoire, etc.):
+- Mobile money + crypto = cas d'usage RÉEL
+- Remises internationales importantes
+- Méfiance envers banques traditionnelles
+- Arnaques fréquentes = prudence nécessaire
+- Contexte économique TRÈS différent de la France
+
+<texts>
+{texts_formatted}
+</texts>
+
+⚠️ NOTE: Le public francophone est sceptique. L'enthousiasme excessif est suspect.
+Déterminez si le contexte est France, Suisse, ou Afrique - ça change tout!
+
+Répondez UNIQUEMENT avec un JSON valide:
+{{
+    "sentiment": "very_bearish|bearish|neutral|bullish|very_bullish",
+    "score": <float -1.0 to 1.0>,
+    "confidence": <float 0.0 to 1.0>,
+    "key_topics": ["topic1", "topic2"],
+    "fud_level": <float 0.0 to 1.0>,
+    "fomo_level": <float 0.0 to 1.0>,
+    "market_impact": "high|medium|low",
+    "is_african_context": <boolean>,
+    "sarcasm_detected": <boolean>,
+    "reasoning": "<brief explanation in English for system processing>"
+}}

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.octadecimal.data_updater</string>
+    
+    <key>ProgramArguments</key>
+    <array>
+        <string>__PROJECT_ROOT__/venv/bin/python</string>
+        <string>__PROJECT_ROOT__/scripts/data_updater_daemon.py</string>
+        <string>--symbols=BTC/USDC</string>
+        <string>--exchanges=binance,dydx</string>
+        <string>--interval=60</string>
+    </array>
+    
+    <key>WorkingDirectory</key>
+    <string>__PROJECT_ROOT__</string>
+    
+    <key>StandardOutPath</key>
+    <string>__PROJECT_ROOT__/logs/data_updater_launchd.log</string>
+    
+    <key>StandardErrorPath</key>
+    <string>__PROJECT_ROOT__/logs/data_updater_launchd.error.log</string>
+    
+    <key>RunAtLoad</key>
+    <true/>
+    
+    <key>KeepAlive</key>
+    <true/>
+    
+    <key>StartInterval</key>
+    <integer>60</integer>
+    
+    <key>ProcessType</key>
+    <string>Background</string>
+    
+    <key>Nice</key>
+    <integer>1</integer>
+</dict>
+</plist>
+

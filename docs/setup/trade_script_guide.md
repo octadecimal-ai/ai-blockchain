@@ -1,5 +1,7 @@
 # Przewodnik po skrypcie trade.sh
 
+> 📚 **Zobacz też**: [Przewodnik po podsumowaniach i logach](../trading/logs_summary_guide.md) - szczegółowe wyjaśnienie wszystkich metryk wyświetlanych w podsumowaniach
+
 ## Wprowadzenie
 
 Skrypt `trade.sh` to główne narzędzie do uruchamiania automatycznego tradingu na dYdX w trybie **paper trading** (wirtualne pieniądze). Działa podobnie do interfejsu dYdX w przeglądarce, ale automatyzuje proces podejmowania decyzji tradingowych na podstawie wybranej strategii.
@@ -23,13 +25,34 @@ Bot działa w pętlach:
 ### `--strategy=NAZWA`
 **Domyślnie:** `piotrek_breakout_strategy`
 
-Określa strategię tradingową używaną przez bota. Obecnie dostępna jest tylko jedna strategia:
-- **piotrek_breakout_strategy** - strategia breakout, która:
-  - Szuka momentów wybicia z konsolidacji
-  - Otwiera pozycje LONG gdy cena przebija opór
-  - Zamyka pozycje gdy następuje konsolidacja lub osiągnięty zostanie SL/TP
+Określa strategię tradingową używaną przez bota. Dostępne strategie:
+
+1. **piotrek_breakout_strategy** (domyślna) - strategia breakout:
+   - Szuka momentów wybicia z konsolidacji
+   - Otwiera pozycje LONG gdy cena przebija opór
+   - Zamyka pozycje gdy następuje konsolidacja lub osiągnięty zostanie SL/TP
+   - Działa dobrze na średnich interwałach (5-15 min)
+   - Zalecana dla początkujących
+
+2. **scalping_strategy** - strategia scalpingowa:
+   - **Najszybsza strategia** - generuje wiele małych transakcji
+   - Działa na bardzo krótkich interwałach (30 sek - 5 min)
+   - Wykrywa małe ruchy cenowe (0.1-0.5%)
+   - Szybko zamyka pozycje (małe zyski, ale częste)
+   - Używa RSI (7 okres), MACD (8/21/5), ATR dla szybkich sygnałów
+   - **Wymaga:** bardzo krótkich interwałów (`--interval=30sek` lub `1min`)
+   - **Zalecana dla:** doświadczonych traderów, którzy mogą monitorować bot w czasie rzeczywistym
 
 **Wpływ:** Strategia decyduje o tym, **kiedy** i **jak** bot otwiera pozycje. Różne strategie reagują inaczej na te same warunki rynkowe.
+
+**Przykład użycia scalping:**
+```bash
+./scripts/trade.sh \
+  --strategy=scalping_strategy \
+  --interval=30sek \
+  --time-limit=30min \
+  --max-loss=200
+```
 
 ---
 

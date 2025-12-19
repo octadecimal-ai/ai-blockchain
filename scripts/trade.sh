@@ -62,7 +62,7 @@ show_help() {
         echo -e "    \033[0;32m--strategy=NAZWA\033[0m" >&2
         echo "        Nazwa strategii tradingowej" >&2
         echo "        Domyślnie: piotrek_breakout_strategy" >&2
-        echo "        Dostępne: piotrek_breakout_strategy" >&2
+        echo "        Dostępne: piotrek_breakout_strategy, scalping_strategy" >&2
         echo "" >&2
         echo -e "    \033[0;32m--mode=MODE\033[0m" >&2
         echo "        Tryb tradingu: paper (wirtualne pieniądze) lub real (prawdziwe)" >&2
@@ -107,6 +107,14 @@ show_help() {
         echo "        Przykład: --account=my_bot" >&2
         echo "        Domyślnie: piotrek_bot" >&2
         echo "" >&2
+        echo -e "    \033[0;32m--no-sounds\033[0m" >&2
+        echo "        Wyłącz dźwięki powiadomień" >&2
+        echo "        Domyślnie: włączone" >&2
+        echo "" >&2
+        echo -e "    \033[0;32m--sounds-tts\033[0m" >&2
+        echo "        Użyj text-to-speech zamiast dźwięków systemowych" >&2
+        echo "        Domyślnie: wyłączone" >&2
+        echo "" >&2
         echo -e "    \033[0;32m--verbose, -v\033[0m" >&2
         echo "        Szczegółowe logi (DEBUG level)" >&2
         echo "" >&2
@@ -129,7 +137,7 @@ show_help() {
         echo -e "    \033[1;37m# Verbose mode dla debugowania\033[0m" >&2
         echo "    ./scripts/trade.sh --verbose --interval=30sek --time-limit=5min" >&2
         echo "" >&2
-        echo -e "\033[0;36m═══════════════════════════════════════════════════════════════════\033[0m" >&2./trade
+        echo -e "\033[0;36m═══════════════════════════════════════════════════════════════════\033[0m" >&2
         echo ""
         echo -e "\033[1;33mUŻYCIE:\033[0m"
         echo "    ./scripts/trade.sh [OPCJE]"
@@ -138,7 +146,7 @@ show_help() {
         echo -e "    \033[0;32m--strategy=NAZWA\033[0m"
         echo "        Nazwa strategii tradingowej"
         echo "        Domyślnie: piotrek_breakout_strategy"
-        echo "        Dostępne: piotrek_breakout_strategy"
+        echo "        Dostępne: piotrek_breakout_strategy, scalping_strategy"
         echo ""
         echo -e "    \033[0;32m--mode=MODE\033[0m"
         echo "        Tryb tradingu: paper (wirtualne pieniądze) lub real (prawdziwe)"
@@ -223,9 +231,10 @@ OPCJE:
         Dostępne: piotrek_breakout_strategy
 
     --mode=MODE
-        Tryb tradingu: paper (wirtualne pieniądze) lub real (prawdziwe)
+        Tryb tradingu: paper (wirtualne pieniądze), real (prawdziwe) lub backtest (test na danych historycznych)
         Domyślnie: paper
         UWAGA: Tryb 'real' wymaga konfiguracji API keys!
+        Tryb 'backtest' testuje strategię na danych historycznych (szybko, bez ryzyka)
 
     --time-limit=CZAS
         Maksymalny czas trwania sesji
@@ -260,10 +269,25 @@ OPCJE:
         Przykład: --leverage=2
         Domyślnie: 2
 
-    --account=NAZWA
+        --account=NAZWA
         Nazwa konta tradingowego
         Przykład: --account=my_bot
         Domyślnie: piotrek_bot
+
+    --position-size=ROZMIAR
+        Stały rozmiar pozycji (np. BTC:1, ETH:10)
+        Format: SYMBOL:ILOŚĆ (np. BTC:1 dla 1 BTC)
+        Jeśli nie podano, używa procentu kapitału
+        Przykład: --position-size=BTC:1
+        Domyślnie: używa procentu kapitału
+
+    --no-sounds
+        Wyłącz dźwięki powiadomień
+        Domyślnie: włączone
+
+    --sounds-tts
+        Użyj text-to-speech zamiast dźwięków systemowych
+        Domyślnie: wyłączone (używa dźwięków systemowych)
 
     --verbose, -v
         Szczegółowe logi (DEBUG level)
@@ -302,6 +326,9 @@ SYMBOLS="BTC-USD,ETH-USD"
 BALANCE="10000"
 LEVERAGE="2"
 ACCOUNT="piotrek_bot"
+POSITION_SIZE=""
+NO_SOUNDS=""
+SOUNDS_TTS=""
 VERBOSE=""
 
 # === Parsowanie argumentów ===
@@ -343,6 +370,10 @@ for arg in "$@"; do
             ;;
         --account=*)
             ACCOUNT="${arg#*=}"
+            shift
+            ;;
+        --position-size=*)
+            POSITION_SIZE="${arg#*=}"
             shift
             ;;
         --verbose|-v)
@@ -450,15 +481,56 @@ fi
 echo ""
 
 # === Uruchomienie bota ===
+if [ "$MODE" = "backtest" ]; then
+    log_info "Uruchamiam backtesting na danych historycznych..."
+    echo ""
+    
+    # Dla backtestingu używamy innego skryptu
+    BACKTEST_ARGS="--strategy=$STRATEGY --symbol=$(echo $SYMBOLS | cut -d',' -f1)"
+    
+    # Okres testowania
+    if [ -n "$TIME_LIMIT" ]; then
+        # Parsuj TIME_LIMIT jako dni
+        if echo "$TIME_LIMIT" | grep -q "d\|day\|days"; then
+            DAYS=$(echo "$TIME_LIMIT" | sed 's/[^0-9]//g')
+            BACKTEST_ARGS="$BACKTEST_ARGS --days=$DAYS"
+        fi
+    else
+        BACKTEST_ARGS="$BACKTEST_ARGS --days=30"  # Domyślnie 30 dni
+    fi
+    
+    [[ -n "$BALANCE" ]] && BACKTEST_ARGS="$BACKTEST_ARGS --balance=$BALANCE"
+    [[ -n "$POSITION_SIZE" ]] && BACKTEST_ARGS="$BACKTEST_ARGS --position-size=$(echo $POSITION_SIZE | cut -d':' -f2)"
+    [[ -n "$VERBOSE" ]] && BACKTEST_ARGS="$BACKTEST_ARGS $VERBOSE"
+    
+    log_info "Parametry backtestingu: $BACKTEST_ARGS"
+    echo ""
+    
+    python scripts/backtest.py $BACKTEST_ARGS
+    EXIT_CODE=$?
+    
+    echo ""
+    if [ $EXIT_CODE -eq 0 ]; then
+        log_success "Backtesting zakończony pomyślnie"
+    else
+        log_error "Backtesting zakończony z błędem (kod: $EXIT_CODE)"
+    fi
+    
+    exit $EXIT_CODE
+fi
+
 log_info "Uruchamiam bota tradingowego..."
 echo ""
 
 # Przygotuj parametry dla Pythona
-PYTHON_ARGS="--account=$ACCOUNT --balance=$BALANCE --symbols=$SYMBOLS --leverage=$LEVERAGE"
+PYTHON_ARGS="--account=$ACCOUNT --balance=$BALANCE --symbols=$SYMBOLS --leverage=$LEVERAGE --strategy=$STRATEGY"
 
 [[ -n "$TIME_LIMIT" ]] && PYTHON_ARGS="$PYTHON_ARGS --time-limit=$TIME_LIMIT"
 [[ -n "$MAX_LOSS" ]] && PYTHON_ARGS="$PYTHON_ARGS --max-loss=$MAX_LOSS"
 [[ -n "$INTERVAL" ]] && PYTHON_ARGS="$PYTHON_ARGS --interval=$INTERVAL"
+[[ -n "$POSITION_SIZE" ]] && PYTHON_ARGS="$PYTHON_ARGS --position-size=$POSITION_SIZE"
+[[ -n "$NO_SOUNDS" ]] && PYTHON_ARGS="$PYTHON_ARGS $NO_SOUNDS"
+[[ -n "$SOUNDS_TTS" ]] && PYTHON_ARGS="$PYTHON_ARGS $SOUNDS_TTS"
 [[ -n "$VERBOSE" ]] && PYTHON_ARGS="$PYTHON_ARGS $VERBOSE"
 
 # Ścieżka do projektu

@@ -261,17 +261,38 @@ class DydxCollector:
         if end_date is None:
             end_date = datetime.now()
         
+        # Upewnij się, że daty są timezone-aware lub naive (spójne)
+        if start_date.tzinfo is None and end_date.tzinfo is not None:
+            start_date = start_date.replace(tzinfo=end_date.tzinfo)
+        elif start_date.tzinfo is not None and end_date.tzinfo is None:
+            end_date = end_date.replace(tzinfo=start_date.tzinfo)
+        
         logger.info(f"Pobieram historię {ticker}: {start_date} -> {end_date}")
         
         all_candles = []
-        current_end = end_date
+        # Konwertuj na pd.Timestamp i upewnij się, że są naive (bez timezone)
+        # dYdX API zwraca daty w UTC, ale bez timezone info w index
+        current_end = pd.Timestamp(end_date)
+        start_ts = pd.Timestamp(start_date)
         
-        while current_end > start_date:
+        # Upewnij się, że oba są naive (bez timezone) dla porównań
+        if current_end.tz is not None:
+            current_end = current_end.tz_localize(None)
+        if start_ts.tz is not None:
+            start_ts = start_ts.tz_localize(None)
+        
+        while current_end > start_ts:
+            # Konwertuj current_end na datetime dla API
+            if isinstance(current_end, pd.Timestamp):
+                current_end_dt = current_end.to_pydatetime()
+            else:
+                current_end_dt = current_end
+            
             df = self.fetch_candles(
                 ticker=ticker,
                 resolution=resolution,
                 limit=100,
-                to_iso=current_end.isoformat() + 'Z'
+                to_iso=current_end_dt.isoformat() + 'Z'
             )
             
             if df.empty:
@@ -281,6 +302,12 @@ class DydxCollector:
             
             # Przesuń end na najstarszy timestamp
             oldest = df.index.min()
+            
+            # Upewnij się, że oldest jest naive (bez timezone) dla porównań
+            if isinstance(oldest, pd.Timestamp):
+                if oldest.tz is not None:
+                    oldest = oldest.tz_localize(None)
+            
             if oldest >= current_end:
                 break
             current_end = oldest
@@ -293,7 +320,18 @@ class DydxCollector:
         
         result = pd.concat(all_candles)
         result = result[~result.index.duplicated(keep='first')]
-        result = result[result.index >= pd.Timestamp(start_date)]
+        
+        # Filtruj daty - upewnij się, że timezone jest spójne
+        start_ts = pd.Timestamp(start_date)
+        if result.index.tz is not None:
+            # Jeśli index ma timezone, upewnij się, że start_ts też ma
+            if start_ts.tz is None:
+                start_ts = start_ts.tz_localize(result.index.tz)
+        elif start_ts.tz is not None:
+            # Jeśli start_ts ma timezone, ale index nie - usuń timezone z start_ts
+            start_ts = start_ts.tz_localize(None)
+        
+        result = result[result.index >= start_ts]
         result.sort_index(inplace=True)
         
         logger.success(f"Pobrano łącznie {len(result)} świec dla {ticker}")

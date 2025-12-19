@@ -6,6 +6,7 @@
 python-dotenv>=1.0.0
 pyyaml>=6.0.1
 loguru>=0.7.2
+tqdm>=4.66.0  # Progress bars
 
 # === Przetwarzanie Danych ===
 pandas>=1.5.0,<2.1.0  # Kompatybilne z Python 3.9

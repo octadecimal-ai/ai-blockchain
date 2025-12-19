@@ -40,7 +40,8 @@ class TradingBot:
         initial_balance: float = 10000.0,
         symbols: List[str] = None,
         strategy: Optional[BaseStrategy] = None,
-        check_interval: int = 60  # sekundy
+        check_interval: int = 60,  # sekundy
+        position_size_config: Optional[dict] = None
     ):
         """
         Inicjalizacja bota.
@@ -61,9 +62,15 @@ class TradingBot:
         # Baza danych
         self.engine = create_engine(database_url, echo=False)
         
-        # Utwórz tabele
-        from src.trading.models import Base
-        Base.metadata.create_all(self.engine)
+        # Utwórz tabele - wszystkie Base muszą być zaimportowane
+        from src.trading.models import Base as TradingBase
+        from src.database.models import Base as DatabaseBase
+        
+        # Import modeli z models_extended (używają DatabaseBase)
+        from src.trading.models_extended import Strategy, TradeRegister, TradingSession
+        
+        TradingBase.metadata.create_all(self.engine)
+        DatabaseBase.metadata.create_all(self.engine)  # To tworzy też tabele z models_extended
         
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
@@ -72,10 +79,16 @@ class TradingBot:
         self.dydx = DydxCollector(testnet=False)
         
         # Paper trading engine
+        # Pobierz slippage z konfiguracji strategii lub użyj domyślnego
+        slippage_percent = 0.75
+        if strategy and hasattr(strategy, 'config'):
+            slippage_percent = strategy.config.get('slippage_percent', 0.75)
+        
         self.engine_pt = PaperTradingEngine(
             session=self.session,
             account_name=account_name,
-            dydx_collector=self.dydx
+            dydx_collector=self.dydx,
+            slippage_percent=slippage_percent
         )
         
         # Strategia
@@ -85,10 +98,25 @@ class TradingBot:
             'min_confidence': 6
         })
         
+        # Jeśli strategia potrzebuje dydx_collector, przekaż go
+        if hasattr(self.strategy, 'config') and self.strategy.config.get('use_real_funding_rate'):
+            if not self.strategy.config.get('dydx_collector'):
+                self.strategy.config['dydx_collector'] = self.dydx
+                # Re-inicjalizuj strategię z nową konfiguracją
+                self.strategy.__init__(self.strategy.config)
+        
+        # Jeśli strategia to PromptStrategy, przekaż paper trading engine
+        if hasattr(self.strategy, 'set_paper_trading_engine'):
+            self.strategy.set_paper_trading_engine(self.engine_pt)
+        
         # Konfiguracja
         self.max_positions = 3  # Maksymalna liczba otwartych pozycji
         self.position_size_percent = 10.0  # % kapitału na pozycję
         self.default_leverage = 2.0  # Domyślna dźwignia
+        self.position_size_config = position_size_config  # Stały rozmiar pozycji (np. {'symbol': 'BTC', 'size': 1.0})
+        
+        # Trading session (będzie utworzona przy starcie)
+        self.trading_session = None
         
         logger.info(f"🤖 Trading Bot zainicjalizowany: {account_name}")
         logger.info(f"   Symbole: {self.symbols}")
@@ -96,9 +124,11 @@ class TradingBot:
         logger.info(f"   Interwał: {self.check_interval}s")
     
     def get_market_data(self, symbol: str, limit: int = 50) -> Any:
-        """Pobiera dane rynkowe."""
+        """Pobiera dane rynkowe używając timeframe strategii."""
         try:
-            df = self.dydx.fetch_candles(symbol, "1h", limit=limit)
+            # Użyj timeframe z strategii (domyślnie 1h)
+            timeframe = getattr(self.strategy, 'timeframe', '1h')
+            df = self.dydx.fetch_candles(symbol, timeframe, limit=limit)
             return df
         except Exception as e:
             logger.error(f"Błąd pobierania danych dla {symbol}: {e}")
@@ -138,9 +168,22 @@ class TradingBot:
             return False
         
         # Oblicz rozmiar pozycji
-        account = self.engine_pt.get_account_summary()
-        capital_to_use = account['current_balance'] * (self.position_size_percent / 100)
-        size = capital_to_use / signal.price
+        if self.position_size_config:
+            # Stały rozmiar pozycji (np. 1 BTC)
+            symbol_base = signal.symbol.split("-")[0]  # BTC z BTC-USD
+            if symbol_base == self.position_size_config['symbol']:
+                size = self.position_size_config['size']
+                logger.info(f"Używam stałego rozmiaru pozycji: {size} {symbol_base}")
+            else:
+                # Dla innych symboli użyj procentu
+                account = self.engine_pt.get_account_summary()
+                capital_to_use = account['current_balance'] * (self.position_size_percent / 100)
+                size = capital_to_use / signal.price
+        else:
+            # Procent kapitału
+            account = self.engine_pt.get_account_summary()
+            capital_to_use = account['current_balance'] * (self.position_size_percent / 100)
+            size = capital_to_use / signal.price
         
         # Otwórz pozycję
         position = self.engine_pt.open_position(
@@ -162,8 +205,52 @@ class TradingBot:
     
     def _handle_sell_signal(self, signal: TradingSignal) -> bool:
         """Obsługuje sygnał sprzedaży (SHORT)."""
-        # Na razie nie obsługujemy SHORT w tej strategii
-        logger.info(f"Sygnał SELL ignorowany (strategia tylko LONG): {signal}")
+        # Sprawdź czy nie mamy za dużo pozycji
+        open_positions = self.engine_pt.get_open_positions()
+        if len(open_positions) >= self.max_positions:
+            logger.warning(f"Maksymalna liczba pozycji ({self.max_positions}) - ignoruję sygnał SELL")
+            return False
+        
+        # Sprawdź czy nie mamy już pozycji na tym symbolu
+        symbol_positions = [p for p in open_positions if p.symbol == signal.symbol]
+        if symbol_positions:
+            logger.warning(f"Już mamy otwartą pozycję na {signal.symbol} - ignoruję")
+            return False
+        
+        # Oblicz rozmiar pozycji
+        if self.position_size_config:
+            # Stały rozmiar pozycji (np. 1 BTC)
+            symbol_base = signal.symbol.split("-")[0]  # BTC z BTC-USD
+            if symbol_base == self.position_size_config['symbol']:
+                size = self.position_size_config['size']
+                logger.info(f"Używam stałego rozmiaru pozycji: {size} {symbol_base}")
+            else:
+                # Dla innych symboli użyj procentu
+                account = self.engine_pt.get_account_summary()
+                capital_to_use = account['current_balance'] * (self.position_size_percent / 100)
+                size = capital_to_use / signal.price
+        else:
+            # Procent kapitału
+            account = self.engine_pt.get_account_summary()
+            capital_to_use = account['current_balance'] * (self.position_size_percent / 100)
+            size = capital_to_use / signal.price
+        
+        # Otwórz pozycję SHORT
+        position = self.engine_pt.open_position(
+            symbol=signal.symbol,
+            side="short",
+            size=size,
+            leverage=self.default_leverage,
+            stop_loss=signal.stop_loss,
+            take_profit=signal.take_profit,
+            strategy=signal.strategy,
+            notes=signal.reason
+        )
+        
+        if position:
+            logger.success(f"✅ Otwarto pozycję SHORT na sygnał: {signal}")
+            return True
+        
         return False
     
     def _handle_close_signal(self, signal: TradingSignal) -> bool:
@@ -226,13 +313,25 @@ class TradingBot:
         for symbol in self.symbols:
             df = self.get_market_data(symbol, limit=50)
             if df is None or df.empty:
+                logger.warning(f"⚠️  Brak danych dla {symbol} - pomijam")
                 continue
+            
+            # Dla PromptStrategy: aktualizuj historię cen
+            if hasattr(self.strategy, 'update_price_history'):
+                self.strategy.update_price_history(symbol, df)
+            
+            # Loguj analizę strategii
+            timeframe = getattr(self.strategy, 'timeframe', '1h')
+            logger.debug(f"📊 Analizuję {symbol} (strategia: {self.strategy.name}, timeframe: {timeframe}, dane: {len(df)} świec)")
             
             signal = self.strategy.analyze(df, symbol)
             
             if signal:
-                logger.info(f"🎯 Sygnał dla {symbol}: {signal}")
+                logger.info(f"🎯 [{self.strategy.name}] Sygnał dla {symbol}: {signal}")
+                logger.info(f"   Powód: {signal.reason}")
                 self.process_signal(signal)
+            else:
+                logger.debug(f"   [{self.strategy.name}] Brak sygnału dla {symbol}")
         
         # 4. Pokaż podsumowanie
         summary = self.engine_pt.get_account_summary()
@@ -241,6 +340,14 @@ class TradingBot:
             f"PnL: ${summary['total_pnl']:.2f} | "
             f"Pozycje: {summary['open_positions']}"
         )
+        
+        # 5. Pokaż statystyki API LLM (jeśli używane)
+        try:
+            from src.utils.api_logger import get_api_logger
+            api_logger = get_api_logger()
+            api_logger.print_session_stats()
+        except Exception:
+            pass  # Ignoruj błędy jeśli API logger nie jest dostępny
     
     def start(self, daemon: bool = False):
         """
@@ -254,6 +361,10 @@ class TradingBot:
         
         logger.info("🚀 Uruchamiam Trading Bot...")
         
+        # Utwórz TradingSession (tylko jeśli nie istnieje)
+        if not self.trading_session:
+            self._create_trading_session()
+        
         # Pokaż początkowe podsumowanie
         summary = self.engine_pt.get_account_summary()
         logger.info(f"📊 Stan początkowy: ${summary['current_balance']:.2f}")
@@ -264,6 +375,45 @@ class TradingBot:
             return thread
         else:
             self._run_loop()
+    
+    def _create_trading_session(self):
+        """Tworzy sesję tradingową w bazie danych."""
+        try:
+            from src.trading.models_extended import TradingSession, Strategy
+            from datetime import datetime, timezone
+            
+            # Pobierz strategię z bazy
+            strategy = self.session.query(Strategy).filter_by(
+                name=self.strategy.name.lower().replace(" ", "_")
+            ).first()
+            
+            # Utwórz unikalne session_id
+            session_id = f"{self.engine_pt.account_name}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+            
+            summary = self.engine_pt.get_account_summary()
+            
+            trading_session = TradingSession(
+                session_id=session_id,
+                account_id=self.engine_pt.account.id,
+                strategy_id=strategy.id if strategy else None,
+                mode="paper",
+                symbols=self.symbols,
+                started_at=datetime.now(timezone.utc),
+                time_limit_seconds=None,  # Będzie ustawione w EnhancedTradingBot
+                max_loss_limit=None,  # Będzie ustawione w EnhancedTradingBot
+                max_positions=self.max_positions,
+                starting_balance=summary['current_balance'],
+                peak_balance=summary['current_balance']
+            )
+            
+            self.session.add(trading_session)
+            self.session.commit()
+            self.trading_session = trading_session
+            
+            logger.info(f"📝 Utworzono TradingSession: {session_id}")
+        except Exception as e:
+            logger.warning(f"Nie udało się utworzyć TradingSession: {e}")
+            self.trading_session = None
     
     def _run_loop(self):
         """Główna pętla bota."""
@@ -287,6 +437,9 @@ class TradingBot:
         self.running = False
         self._stop_event.set()
         
+        # Zamknij TradingSession
+        self._close_trading_session()
+        
         # Pokaż końcowe podsumowanie
         summary = self.engine_pt.get_account_summary()
         stats = self.engine_pt.get_performance_stats()
@@ -300,6 +453,48 @@ class TradingBot:
         logger.info(f"Liczba transakcji: {stats['total_trades']}")
         logger.info(f"Win rate: {stats['win_rate']:.1f}%")
         logger.info(f"Max drawdown: {summary['max_drawdown']:.2f}%")
+    
+    def _close_trading_session(self):
+        """Zamyka sesję tradingową w bazie danych."""
+        if not self.trading_session:
+            return
+        
+        try:
+            from datetime import datetime, timezone
+            
+            # Odśwież sesję z bazy
+            self.trading_session = self.session.query(type(self.trading_session)).filter_by(
+                id=self.trading_session.id
+            ).first()
+            
+            if not self.trading_session:
+                return
+            
+            summary = self.engine_pt.get_account_summary()
+            stats = self.engine_pt.get_performance_stats()
+            
+            # Upewnij się, że started_at jest timezone-aware
+            started_at = self.trading_session.started_at
+            if started_at.tzinfo is None:
+                started_at = started_at.replace(tzinfo=timezone.utc)
+            
+            duration = (datetime.now(timezone.utc) - started_at).total_seconds()
+            
+            self.trading_session.ended_at = datetime.now(timezone.utc)
+            self.trading_session.duration_seconds = int(duration)
+            self.trading_session.ending_balance = summary['equity']
+            self.trading_session.peak_balance = summary.get('peak_balance', summary['equity'])
+            self.trading_session.max_drawdown = summary['max_drawdown']
+            self.trading_session.total_trades = stats.get('total_trades', 0)
+            self.trading_session.winning_trades = stats.get('winning_trades', 0)
+            self.trading_session.losing_trades = stats.get('losing_trades', 0)
+            self.trading_session.total_pnl = summary['total_pnl']
+            self.trading_session.end_reason = "manual"
+            
+            self.session.commit()
+            logger.info(f"📝 Zamknięto TradingSession: {self.trading_session.session_id}")
+        except Exception as e:
+            logger.warning(f"Nie udało się zamknąć TradingSession: {e}")
         logger.info("=" * 50)
 
 

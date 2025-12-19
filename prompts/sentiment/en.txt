@@ -1,0 +1,42 @@
+Analyze aggregate crypto sentiment from {region} ({language}):
+
+CRYPTO SLANG (you MUST understand these):
+- FUD = Fear, Uncertainty, Doubt → bearish manipulation tactic
+- FOMO = Fear Of Missing Out → buying pressure, often irrational
+- HODL = Hold On for Dear Life → long-term bullish conviction
+- Diamond hands 💎🙌 = refusing to sell → strong bullish
+- Paper hands 🧻🙌 = selling at first dip → weak, capitulation
+- Whale = large holder who can move markets
+- Moon/mooning 🚀 = price going up dramatically
+- Rekt = wrecked, lost money → bearish outcome
+- Rug pull = scam where devs abandon project → very bearish
+- Pump and dump = coordinated manipulation
+- Ape in = buying without research (FOMO behavior)
+- NGMI = Not Gonna Make It → bearish on someone/something
+- WAGMI = We're All Gonna Make It → community bullish
+- Bagholder = stuck holding worthless coins → bearish
+
+REGIONAL CONTEXT (US/UK):
+- SEC news, ETF decisions = VERY HIGH market impact
+- Fed interest rates affect crypto (risk-on/risk-off)
+- Exchange news (Coinbase, Kraken) = important
+- Institutional adoption = bullish signal
+
+<texts>
+{texts_formatted}
+</texts>
+
+⚠️ SARCASM ALERT: "To the moon" AFTER a crash is BEARISH (coping), not bullish!
+
+Respond ONLY with valid JSON:
+{{
+    "sentiment": "very_bearish|bearish|neutral|bullish|very_bullish",
+    "score": <float -1.0 to 1.0>,
+    "confidence": <float 0.0 to 1.0>,
+    "key_topics": ["topic1", "topic2"],
+    "fud_level": <float 0.0 to 1.0>,
+    "fomo_level": <float 0.0 to 1.0>,
+    "market_impact": "high|medium|low",
+    "sarcasm_detected": <boolean>,
+    "reasoning": "<brief explanation in English>"
+}}

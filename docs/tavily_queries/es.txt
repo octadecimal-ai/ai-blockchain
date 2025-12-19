@@ -1,0 +1,71 @@
+# Tavily Search Queries - Spanish (Español)
+# =========================================
+# LATAM + España - Mercados MUY diferentes!
+# LATAM: crypto como refugio | España: especulación
+
+# === LATAM QUERIES (Argentina, México, Venezuela, Colombia) ===
+
+# --- Noticias LATAM ---
+Bitcoin noticias Argentina hoy
+criptomonedas Latinoamérica
+BTC precio análisis México
+cripto noticias Venezuela
+
+# --- Inflación y Refugio (CRITICAL for LATAM) ---
+Bitcoin inflación Argentina
+dólar blue criptomonedas
+stablecoin USDT ahorro
+cripto remesas Latinoamérica
+
+# --- Exchanges LATAM ---
+Binance Latinoamérica noticias
+Bitso México novedades
+Ripio Argentina anuncio
+Buda exchange Chile
+
+# --- P2P y Restricciones ---
+P2P criptomonedas Argentina
+comprar Bitcoin sin banco
+cripto control cambiario
+dólares cripto Venezuela
+
+# --- El Salvador (regional reference) ---
+Bitcoin El Salvador noticias
+Bukele criptomonedas
+ley Bitcoin Centroamérica
+
+# --- Regulación LATAM ---
+regulación cripto México
+impuestos Bitcoin Argentina
+criptomonedas legal Colombia
+
+# === ESPAÑA QUERIES ===
+
+# --- Noticias España ---
+Bitcoin noticias España hoy
+criptomonedas mercado español
+BTC análisis precio Europa
+
+# --- Regulación EU/España ---
+MiCA regulación criptomonedas
+CNMV Bitcoin España
+impuestos cripto España
+Hacienda criptomonedas
+
+# --- Exchanges España ---
+Bit2Me noticias
+Kucoin España
+cripto bancos españoles
+
+# === GENERAL SPANISH ===
+
+# --- Análisis Mercado ---
+Bitcoin análisis técnico hoy
+BTC predicción precio
+criptomonedas subida bajada
+mercado cripto tendencia
+
+# --- Sentimiento ---
+Bitcoin miedo codicia
+cripto Twitter español
+comunidad Bitcoin hispana

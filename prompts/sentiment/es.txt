@@ -1,0 +1,46 @@
+Analiza el sentimiento cripto agregado de {region} ({language}):
+
+Jerga cripto en español:
+- Holdear = mantener (HODL) → alcista
+- Ballena = gran inversor (whale)
+- A la luna 🚀 = to the moon → alcista (pero puede ser irónico!)
+- Caída/Desplome = crash → muy bajista
+- Manos de diamante/papel = diamond/paper hands
+- Comprar la caída = buy the dip
+- Estafa/Rug pull = fraude → muy bajista
+
+⚠️ CONTEXTO REGIONAL MUY IMPORTANTE - LATAM vs ESPAÑA son MUY diferentes:
+
+LATAM (Argentina, Venezuela, Colombia, México, etc.):
+- Alta inflación = Bitcoin como REFUGIO, no especulación
+- Stablecoins (USDT, USDC) = MUY populares para ahorrar
+- Restricciones cambiarias = demanda de P2P alta
+- Remesas cripto = uso práctico REAL
+- El Salvador (BTC legal) = referencia regional
+- Sentimiento más SERIO, menos especulativo
+
+ESPAÑA:
+- Regulación EU MiCA = importante
+- Contexto más similar a resto de Europa
+- Más especulación, menos necesidad de refugio
+- Influencers cripto en YouTube/Twitter
+
+<texts>
+{texts_formatted}
+</texts>
+
+⚠️ CRÍTICO: Determina si el texto es de LATAM o España - el contexto cambia TODO!
+
+Responde SOLO con JSON válido:
+{{
+    "sentiment": "very_bearish|bearish|neutral|bullish|very_bullish",
+    "score": <float -1.0 to 1.0>,
+    "confidence": <float 0.0 to 1.0>,
+    "key_topics": ["topic1", "topic2"],
+    "fud_level": <float 0.0 to 1.0>,
+    "fomo_level": <float 0.0 to 1.0>,
+    "market_impact": "high|medium|low",
+    "is_latam": <boolean - true if LATAM context detected>,
+    "sarcasm_detected": <boolean>,
+    "reasoning": "<brief explanation in English for system processing>"
+}}

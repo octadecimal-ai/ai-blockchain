@@ -8,7 +8,7 @@ Wykorzystuje bibliotekę ccxt dla ujednoliconego dostępu do API.
 import os
 import ccxt
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, List
 import time
@@ -62,22 +62,33 @@ class BinanceCollector:
         config = {
             'enableRateLimit': True,
             'options': {
-                'defaultType': 'spot',
+                'defaultType': 'spot',  # Domyślnie spot dla OHLCV
             }
         }
         
-        # Dodaj API keys jeśli dostępne
-        if api_key and secret:
-            config['apiKey'] = api_key
-            config['secret'] = secret
-            logger.info("Binance Collector: API keys skonfigurowane")
+        # Dodaj API keys tylko jeśli są poprawne (niepuste i nie są placeholderami)
+        # Dla publicznych danych (OHLCV) API keys nie są wymagane
+        if api_key and secret and api_key.strip() and secret.strip():
+            # Sprawdź czy to nie są placeholder wartości
+            if api_key.lower() not in ['your_api_key', 'your_key', ''] and secret.lower() not in ['your_secret', 'your_secret_key', '']:
+                config['apiKey'] = api_key
+                config['secret'] = secret
+                logger.info("Binance Collector: API keys skonfigurowane")
+            else:
+                logger.info("Binance Collector: tryb publiczny (nieprawidłowe API keys w .env)")
         else:
             logger.info("Binance Collector: tryb publiczny (bez API keys)")
         
         self.exchange = ccxt.binance(config)
         
+        # Osobny exchange dla futures (funding rates, open interest)
+        futures_config = config.copy()
+        futures_config['options'] = {'defaultType': 'future'}
+        self.futures_exchange = ccxt.binance(futures_config)
+        
         if sandbox:
             self.exchange.set_sandbox_mode(True)
+            self.futures_exchange.set_sandbox_mode(True)
             logger.info("Binance Collector uruchomiony w trybie SANDBOX")
         else:
             logger.info("Binance Collector uruchomiony w trybie PRODUKCYJNYM")
@@ -199,10 +210,16 @@ class BinanceCollector:
             columns=['timestamp', 'open', 'high', 'low', 'close', 'volume']
         )
         
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
         df.set_index('timestamp', inplace=True)
         df = df[~df.index.duplicated(keep='first')]  # Usuń duplikaty
-        df = df[df.index <= pd.Timestamp(end_date)]  # Ogranicz do end_date
+        # Ogranicz do end_date (upewnij się że oba są tz-aware)
+        if end_date.tzinfo is None:
+            end_date = end_date.replace(tzinfo=timezone.utc)
+        end_date_ts = pd.Timestamp(end_date)
+        if end_date_ts.tz is None:
+            end_date_ts = end_date_ts.tz_localize('UTC')
+        df = df[df.index <= end_date_ts]  # Ogranicz do end_date
         
         logger.success(f"Pobrano łącznie {len(df)} świec dla {symbol}")
         return df
@@ -231,6 +248,265 @@ class BinanceCollector:
     def get_ticker(self, symbol: str = "BTC/USDT") -> dict:
         """Pobiera aktualny ticker (cenę) dla symbolu."""
         return self.exchange.fetch_ticker(symbol)
+    
+    def get_funding_rates(
+        self,
+        symbol: str = "BTC/USDT:USDT",  # Perpetual futures symbol
+        since: Optional[datetime] = None,
+        limit: int = 1000
+    ) -> pd.DataFrame:
+        """
+        Pobiera historię funding rates z Binance Futures.
+        
+        Args:
+            symbol: Symbol perpetual futures (np. "BTC/USDT:USDT")
+            since: Data początkowa (domyślnie 30 dni wstecz)
+            limit: Maksymalna liczba rekordów
+            
+        Returns:
+            DataFrame z kolumnami: timestamp, funding_rate, price
+        """
+        if since is None:
+            since = datetime.now() - timedelta(days=30)
+        
+        since_ms = int(since.timestamp() * 1000)
+        
+        logger.info(f"Pobieram funding rates dla {symbol} od {since}")
+        
+        try:
+            # Użyj futures_exchange dla funding rates
+            # Binance zwraca maksymalnie 1000 rekordów, więc pobieramy w partiach
+            all_rates = []
+            max_limit = 1000  # Binance limit
+            current_since = since_ms
+            max_iterations = 100  # Zabezpieczenie przed nieskończoną pętlą
+            
+            logger.info(f"Pobieram funding rates w partiach (max {max_limit} rekordów na partię)")
+            
+            for iteration in range(max_iterations):
+                try:
+                    # Pobierz partię danych
+                    if current_since:
+                        batch = self.futures_exchange.fetch_funding_rate_history(
+                            symbol=symbol,
+                            since=current_since,
+                            limit=max_limit
+                        )
+                    else:
+                        batch = self.futures_exchange.fetch_funding_rate_history(
+                            symbol=symbol,
+                            limit=max_limit
+                        )
+                except Exception as e:
+                    # Jeśli błąd z since, spróbuj bez since (pobierze najnowsze)
+                    if 'since' in str(e).lower() or 'illegal' in str(e).lower() or 'invalid' in str(e).lower():
+                        if iteration == 0:  # Tylko dla pierwszej iteracji
+                            logger.debug(f"Błąd z parametrem since, próbuję bez since")
+                            batch = self.futures_exchange.fetch_funding_rate_history(
+                                symbol=symbol,
+                                limit=max_limit
+                            )
+                        else:
+                            break  # Dla kolejnych iteracji, przerwij jeśli błąd
+                    else:
+                        raise
+                
+                if not batch or len(batch) == 0:
+                    break
+                
+                # Dodaj partię do listy
+                all_rates.extend(batch)
+                
+                # Jeśli pobraliśmy mniej niż max_limit, znaczy że to koniec danych
+                if len(batch) < max_limit:
+                    break
+                
+                # Binance zwraca dane od NAJSTARSZYCH do NAJNOWSZYCH (indeks 0 = najstarszy, -1 = najnowszy)
+                oldest_timestamp = batch[0]['timestamp']  # Pierwszy rekord = najstarszy
+                newest_timestamp = batch[-1]['timestamp']  # Ostatni rekord = najnowszy
+                
+                # Sprawdź czy osiągnęliśmy start_date (jeśli najstarszy rekord jest starszy niż start_date, przerwij)
+                if since_ms and oldest_timestamp < since_ms:
+                    # Usuń rekordy starsze niż start_date
+                    batch = [r for r in batch if r['timestamp'] >= since_ms]
+                    if batch:
+                        all_rates.extend(batch)
+                    break
+                
+                # Aby pobrać kolejne dane (nowsze), ustaw since na timestamp najnowszego rekordu + 1ms
+                current_since = newest_timestamp + 1
+                
+                # Sprawdź czy nie przekroczyliśmy aktualnej daty
+                now_ms = int(datetime.now().timestamp() * 1000)
+                if current_since > now_ms:
+                    break
+                
+                # Jeśli mamy limit, sprawdź czy już go osiągnęliśmy
+                if limit and len(all_rates) >= limit:
+                    all_rates = all_rates[:limit]
+                    break
+                
+                logger.debug(f"Pobrano partię {iteration + 1}: {len(batch)} rekordów (łącznie: {len(all_rates)})")
+            
+            funding_rates = all_rates
+            
+            if not funding_rates:
+                logger.warning(f"Brak funding rates dla {symbol}")
+                return pd.DataFrame()
+            
+            df = pd.DataFrame(funding_rates)
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df.set_index('timestamp', inplace=True)
+            df.rename(columns={'fundingRate': 'funding_rate'}, inplace=True)
+            
+            # Dodaj cenę jeśli dostępna
+            if 'markPrice' in df.columns:
+                df.rename(columns={'markPrice': 'price'}, inplace=True)
+            
+            # Zostaw tylko potrzebne kolumny
+            columns_to_keep = ['funding_rate', 'price']
+            df = df[[col for col in columns_to_keep if col in df.columns]]
+            
+            logger.success(f"Pobrano {len(df)} funding rates dla {symbol}")
+            return df
+            
+        except Exception as e:
+            logger.error(f"Błąd pobierania funding rates: {e}")
+            return pd.DataFrame()
+    
+    def get_open_interest(
+        self,
+        symbol: str = "BTC/USDT:USDT",  # Perpetual futures symbol
+        since: Optional[datetime] = None,
+        limit: int = 1000
+    ) -> pd.DataFrame:
+        """
+        Pobiera historię open interest z Binance Futures.
+        
+        Args:
+            symbol: Symbol perpetual futures (np. "BTC/USDT:USDT")
+            since: Data początkowa (domyślnie 30 dni wstecz)
+            limit: Maksymalna liczba rekordów
+            
+        Returns:
+            DataFrame z kolumnami: timestamp, open_interest
+        """
+        if since is None:
+            since = datetime.now() - timedelta(days=30)
+        
+        since_ms = int(since.timestamp() * 1000)
+        
+        logger.info(f"Pobieram open interest dla {symbol} od {since}")
+        
+        try:
+            # Użyj futures_exchange dla open interest
+            # Binance może mieć ograniczenia, więc pobieramy w partiach
+            all_oi = []
+            max_limit = 500  # Binance limit dla open interest
+            current_since = since_ms
+            max_iterations = 100  # Zabezpieczenie przed nieskończoną pętlą
+            
+            logger.info(f"Pobieram open interest w partiach (max {max_limit} rekordów na partię)")
+            
+            for iteration in range(max_iterations):
+                try:
+                    # Pobierz partię danych
+                    if current_since:
+                        batch = self.futures_exchange.fetch_open_interest_history(
+                            symbol=symbol,
+                            since=current_since,
+                            limit=max_limit
+                        )
+                    else:
+                        batch = self.futures_exchange.fetch_open_interest_history(
+                            symbol=symbol,
+                            limit=max_limit
+                        )
+                except Exception as e:
+                    # Jeśli błąd z parametrami, spróbuj bez since/limit
+                    if 'limit' in str(e).lower() or 'startTime' in str(e).lower() or 'invalid' in str(e).lower() or 'since' in str(e).lower():
+                        if iteration == 0:  # Tylko dla pierwszej iteracji
+                            logger.debug(f"Błąd z parametrami, próbuję bez since/limit")
+                            batch = self.futures_exchange.fetch_open_interest_history(
+                                symbol=symbol
+                            )
+                        else:
+                            break  # Dla kolejnych iteracji, przerwij jeśli błąd
+                    else:
+                        raise
+                
+                if not batch or len(batch) == 0:
+                    break
+                
+                # Dodaj partię do listy
+                all_oi.extend(batch)
+                
+                # Jeśli pobraliśmy mniej niż max_limit, znaczy że to koniec danych
+                if len(batch) < max_limit:
+                    break
+                
+                # Binance zwraca dane od NAJSTARSZYCH do NAJNOWSZYCH (indeks 0 = najstarszy, -1 = najnowszy)
+                oldest_timestamp = batch[0]['timestamp']  # Pierwszy rekord = najstarszy
+                newest_timestamp = batch[-1]['timestamp']  # Ostatni rekord = najnowszy
+                
+                # Sprawdź czy osiągnęliśmy start_date (jeśli najstarszy rekord jest starszy niż start_date, przerwij)
+                if since_ms and oldest_timestamp < since_ms:
+                    # Usuń rekordy starsze niż start_date
+                    batch = [r for r in batch if r['timestamp'] >= since_ms]
+                    if batch:
+                        all_rates.extend(batch)
+                    break
+                
+                # Aby pobrać kolejne dane (nowsze), ustaw since na timestamp najnowszego rekordu + 1ms
+                current_since = newest_timestamp + 1
+                
+                # Sprawdź czy nie przekroczyliśmy aktualnej daty
+                now_ms = int(datetime.now().timestamp() * 1000)
+                if current_since > now_ms:
+                    break
+                
+                # Jeśli mamy limit, sprawdź czy już go osiągnęliśmy
+                if limit and len(all_oi) >= limit:
+                    all_oi = all_oi[:limit]
+                    break
+                
+                logger.debug(f"Pobrano partię {iteration + 1}: {len(batch)} rekordów (łącznie: {len(all_oi)})")
+            
+            oi_data = all_oi
+            
+            if not oi_data:
+                logger.warning(f"Brak open interest dla {symbol}")
+                return pd.DataFrame()
+            
+            df = pd.DataFrame(oi_data)
+            if df.empty:
+                return pd.DataFrame()
+            
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df.set_index('timestamp', inplace=True)
+            
+            # Sprawdź różne możliwe nazwy kolumny
+            if 'openInterestAmount' in df.columns:
+                df.rename(columns={'openInterestAmount': 'open_interest'}, inplace=True)
+            elif 'openInterest' in df.columns:
+                df.rename(columns={'openInterest': 'open_interest'}, inplace=True)
+            elif 'open_interest' not in df.columns:
+                logger.warning(f"Brak kolumny open_interest w danych dla {symbol}, dostępne kolumny: {df.columns.tolist()}")
+                return pd.DataFrame()
+            
+            # Zostaw tylko open_interest
+            if 'open_interest' in df.columns:
+                df = df[['open_interest']]
+            else:
+                logger.warning(f"Brak kolumny open_interest w danych dla {symbol}")
+                return pd.DataFrame()
+            
+            logger.success(f"Pobrano {len(df)} rekordów open interest dla {symbol}")
+            return df
+            
+        except Exception as e:
+            logger.error(f"Błąd pobierania open interest: {e}")
+            return pd.DataFrame()
 
 
 # === Przykład użycia ===

@@ -1,0 +1,41 @@
+Analizza il sentimento crypto da {region} ({language}):
+
+Terminologia crypto italiana:
+- Hodlare = tenere (HODL) → rialzista
+- Mani di diamante = forte convinzione, non vendere
+- Mani di carta = mani deboli, vendita rapida → ribassista
+- Balena = grande investitore (whale)
+- Verso la luna 🚀 = to the moon → rialzista
+- Crollo/Crash = forte calo → molto ribassista
+- Comprare il calo = buy the dip
+- Truffa/Scam = frode → molto ribassista
+- Shitcoin = token senza valore
+
+Contesto italiano:
+- Consob = autorità di regolamentazione, notizie importanti
+- 26% tassa sui capital gain
+- Regolamento EU MiCA = impatto significativo
+- Young Platform = exchange italiano
+- Alta diffusione tra i giovani (18-35)
+- YouTube/Telegram = fonti principali
+
+<texts>
+{texts_formatted}
+</texts>
+
+⚠️ NOTA CULTURALE: Gli italiani sono generalmente prudenti e scettici.
+L'entusiasmo eccessivo è visto con sospetto.
+"Troppo bello per essere vero" = segnale di allarme
+
+Rispondi SOLO con JSON valido:
+{{
+    "sentiment": "very_bearish|bearish|neutral|bullish|very_bullish",
+    "score": <float -1.0 to 1.0>,
+    "confidence": <float 0.0 to 1.0>,
+    "key_topics": ["topic1", "topic2"],
+    "fud_level": <float 0.0 to 1.0>,
+    "fomo_level": <float 0.0 to 1.0>,
+    "market_impact": "high|medium|low",
+    "sarcasm_detected": <boolean>,
+    "reasoning": "<brief explanation in English for system processing>"
+}}

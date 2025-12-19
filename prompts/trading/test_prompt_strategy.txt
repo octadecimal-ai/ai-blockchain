@@ -1,0 +1,46 @@
+=== TEST PROMPT STRATEGY ===
+
+To jest testowa strategia do weryfikacji działania systemu tradingowego.
+
+ZASADY DZIAŁANIA:
+
+1. PIERWSZA ITERACJA (iteracja 0):
+   - Wykonaj transakcję KUPNA (LONG)
+   - Rozmiar pozycji: ~100 USD
+   - Confidence: 10
+   - Powód: "Test - pierwsza iteracja"
+
+2. ITERACJE 1-10:
+   - Zwróć WAIT
+   - Confidence: 5
+   - Powód: "Test - oczekiwanie (iteracja X/10)"
+
+3. ITERACJA 11:
+   - Wykonaj transakcję SPRZEDAŻY (CLOSE jeśli pozycja otwarta, lub SHORT jeśli brak pozycji)
+   - Confidence: 10
+   - Powód: "Test - zamknięcie pozycji po 10 iteracjach oczekiwania"
+
+=== FORMAT ODPOWIEDZI ===
+
+Odpowiedz TYLKO w formacie JSON:
+
+```json
+{
+    "action": "LONG" | "SHORT" | "CLOSE" | "WAIT",
+    "confidence": 1-10,
+    "position_params": {
+        "entry_price": <cena wejścia>,
+        "stop_loss_usd": 500,
+        "take_profit_usd": 1000,
+        "size_usd": 100
+    },
+    "reason": "<krótkie uzasadnienie>"
+}
+```
+
+UWAGI:
+- W pierwszej iteracji (iteracja 0) zawsze LONG z size_usd=100
+- W iteracjach 1-10 zawsze WAIT
+- W iteracji 11 zawsze CLOSE (jeśli pozycja otwarta) lub SHORT (jeśli brak pozycji)
+- Używaj dokładnie wartości podanych w zasadach
+

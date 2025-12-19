@@ -132,7 +132,20 @@ def init_database(database_url: str = None):
                     'min_confidence': 5,
                     'risk_reward_ratio': 2.0,
                     'lookback_period': 20,
-                    'consolidation_candles': 3
+                    'consolidation_candles': 3,
+                    # RSI konfiguracja
+                    'use_rsi': True,
+                    'rsi_period': 14,
+                    'rsi_oversold': 30,
+                    'rsi_overbought': 70,
+                    'rsi_momentum_threshold': 5.0,
+                    # Zarządzanie ryzykiem
+                    'max_loss_usd': 500,
+                    'min_profit_target_usd': 500,
+                    'max_profit_target_usd': 2000,
+                    # Slippage
+                    'slippage_percent': 0.75,
+                    'account_for_slippage': True
                 },
                 min_confidence=5.0,
                 risk_reward_ratio=2.0,
@@ -145,11 +158,75 @@ def init_database(database_url: str = None):
         else:
             logger.info(f"Strategia już istnieje: {strategy.display_name}")
         
-        # Pokaż wszystkie strategie
-        strategies = session.query(Strategy).all()
-        logger.info(f"\n📊 Zarejestrowane strategie ({len(strategies)}):")
-        for s in strategies:
-            logger.info(f"   - {s.name} v{s.version}: {s.display_name}")
+               # Strategia Scalping
+               scalping_strategy = session.query(Strategy).filter_by(name="scalping_strategy").first()
+               if not scalping_strategy:
+                   scalping_strategy = Strategy(
+                       name="scalping_strategy",
+                       display_name="Scalping Strategy",
+                       version="1.0.0",
+                       description="Szybka strategia scalpingowa dla bardzo krótkich interwałów (1-5 min). Generuje wiele małych zysków.",
+                       author="AI Blockchain Team",
+                       default_config={
+                           'min_price_change': 0.1,
+                           'max_price_change': 0.5,
+                           'min_confidence': 4.0,
+                           'rsi_period': 7,
+                           'rsi_oversold': 25,
+                           'rsi_overbought': 75,
+                           'rsi_momentum_threshold': 3.0,
+                           'macd_fast': 8,
+                           'macd_slow': 21,
+                           'macd_signal': 5,
+                           'atr_period': 7,
+                           'atr_multiplier': 1.5,
+                           'atr_take_profit': 2.0,
+                           'min_volume_ratio': 1.2,
+                           'volume_period': 10,
+                           'max_hold_seconds': 300,
+                           'min_hold_seconds': 30,
+                           'risk_reward_ratio': 1.5,
+                           'slippage_percent': 0.1
+                       },
+                       min_confidence=4.0,
+                       risk_reward_ratio=1.5,
+                       max_drawdown_percent=15.0,
+                       is_active=True
+                   )
+                   session.add(scalping_strategy)
+                   session.commit()
+                   logger.success(f"✓ Dodano strategię: {scalping_strategy.display_name}")
+               else:
+                   # Aktualizuj konfigurację jeśli strategia już istnieje
+                   scalping_strategy.default_config = {
+                       'min_price_change': 0.1,
+                       'max_price_change': 0.5,
+                       'min_confidence': 4.0,
+                       'rsi_period': 7,
+                       'rsi_oversold': 25,
+                       'rsi_overbought': 75,
+                       'rsi_momentum_threshold': 3.0,
+                       'macd_fast': 8,
+                       'macd_slow': 21,
+                       'macd_signal': 5,
+                       'atr_period': 7,
+                       'atr_multiplier': 1.5,
+                       'atr_take_profit': 2.0,
+                       'min_volume_ratio': 1.2,
+                       'volume_period': 10,
+                       'max_hold_seconds': 300,
+                       'min_hold_seconds': 30,
+                       'risk_reward_ratio': 1.5,
+                       'slippage_percent': 0.1
+                   }
+                   session.commit()
+                   logger.info(f"Strategia już istnieje: {scalping_strategy.display_name} - zaktualizowano konfigurację.")
+               
+               # Pokaż wszystkie strategie
+               strategies = session.query(Strategy).all()
+               logger.info(f"\n📊 Zarejestrowane strategie ({len(strategies)}):")
+               for s in strategies:
+                   logger.info(f"   - {s.name} v{s.version}: {s.display_name}")
         
     except Exception as e:
         logger.error(f"Błąd podczas dodawania strategii: {e}")

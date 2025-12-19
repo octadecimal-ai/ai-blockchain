@@ -1,0 +1,52 @@
+# Tavily Search Queries - English (US/UK)
+# ========================================
+# Rotate through these queries to get diverse results
+# Use 2-3 queries per search session
+
+# --- Breaking News & Market Impact ---
+Bitcoin breaking news today
+BTC ETF SEC decision latest
+cryptocurrency regulation news US
+Federal Reserve crypto impact
+
+# --- Exchange & Institutional ---
+Coinbase Bitcoin news
+Kraken cryptocurrency announcement
+BlackRock Bitcoin ETF update
+Fidelity crypto news today
+
+# --- Social Sentiment ---
+Bitcoin Twitter sentiment today
+crypto Reddit wallstreetbets
+BTC whale alert movements
+cryptocurrency fear greed index
+
+# --- Technical & Price ---
+Bitcoin price analysis today
+BTC technical analysis breakout
+cryptocurrency market crash rally
+Bitcoin support resistance levels
+
+# --- Regulatory ---
+SEC cryptocurrency lawsuit
+CFTC Bitcoin regulation
+US crypto tax news
+cryptocurrency compliance news
+
+# --- Macro & Institutional ---
+institutional Bitcoin buying
+Bitcoin corporate treasury
+hedge fund cryptocurrency
+pension fund crypto investment
+
+# --- Specific Events ---
+Bitcoin halving news
+cryptocurrency hack exchange
+stablecoin news USDT USDC
+DeFi protocol news
+
+# --- Alternative Queries (rotate) ---
+BTC USDT market sentiment
+crypto market outlook today
+Bitcoin bull bear signal
+digital asset news institutional

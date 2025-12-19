@@ -58,6 +58,8 @@ env/
 data/raw/*
 data/processed/*
 data/models/*
+data/optimization/*
+data/sentiment_waves/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/models/.gitkeep
@@ -100,5 +102,6 @@ desktop.ini
 *.bak
 *.tmp
 *.temp
+*.pid
 
 .dev
