@@ -105,3 +105,6 @@ desktop.ini
 *.pid
 
 .dev
+
+# Wrażliwe pliki - 2025-12-30
+docker-compose.yml
