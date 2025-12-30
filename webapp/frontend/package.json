@@ -1,6 +1,7 @@
 {
   "name": "sentiment-visualization",
   "version": "1.0.0",
+  "license": "UNLICENSED",
   "description": "3D Sentiment Visualization on Google Maps",
   "private": true,
   "dependencies": {
